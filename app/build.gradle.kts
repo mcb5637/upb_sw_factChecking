@@ -22,7 +22,10 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // This dependency is used by the application.
-    implementation(libs.guava)
+    implementation("org.apache.jena:apache-jena-libs:5.2.0")
+    implementation("ch.qos.logback:logback-core:1.5.12")
+    implementation("org.slf4j:slf4j-api:2.0.16")
+    implementation("ch.qos.logback:logback-classic:1.5.12")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -34,7 +37,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "org.example.App"
+    mainClass = "org.upb_sw_factChecking.App"
 }
 
 tasks.named<Test>("test") {
