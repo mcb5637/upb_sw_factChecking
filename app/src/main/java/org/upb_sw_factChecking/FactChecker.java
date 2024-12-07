@@ -10,20 +10,20 @@ import org.apache.jena.reasoner.ReasonerRegistry;
 import org.apache.jena.reasoner.ValidityReport;
 
 public class FactChecker {
-    private final Reasoner reasoner;
-    private final Graph knownFacts;
+    private final Reasoner knownReasoner;
+    private final InfGraph inferred;
 
     public FactChecker(Graph knownFacts) {
-        this.knownFacts = knownFacts;
-        reasoner = ReasonerRegistry.getOWLReasoner().bindSchema(knownFacts);
+        knownReasoner = ReasonerRegistry.getOWLReasoner().bindSchema(knownFacts);
+        inferred = ReasonerRegistry.getOWLReasoner().bind(knownFacts);
     }
 
     public double check(Statement toCheck) {
-        if (knownFacts.contains(toCheck.asTriple()))
+        if (inferred.contains(toCheck.asTriple()))
             return 1.0;
         Model tmp = ModelFactory.createDefaultModel();
         tmp.add(toCheck);
-        InfGraph m = reasoner.bind(tmp.getGraph());
+        InfGraph m = knownReasoner.bind(tmp.getGraph());
         ValidityReport v = m.validate();
         if (!v.isValid())
             return 0.0;
