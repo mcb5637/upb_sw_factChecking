@@ -32,14 +32,14 @@ public class TestSet {
     public void loadStatements() {
         // Load statements from the file.
         // The file contains training data in N-Triples format.
-        // Each training data contains a type, statement, and truth value, therefore, each data is spread over 5 lines.
+        // Each training data contains a type and statement, therefore, each data is spread over 4 lines.
 
         try (BufferedReader reader = Files.newBufferedReader(file)) {
             String line;
             while ((line = reader.readLine()) != null) {
                 Model model = ModelFactory.createDefaultModel();
                 model.read(new StringReader(line), null, "N-Triples");
-                for (int i = 0; i < 4; i++) {
+                for (int i = 0; i < 3; i++) {
                     model.read(new StringReader(reader.readLine()), null, "N-Triples");
                 }
                 final var subject = model.listObjectsOfProperty(
