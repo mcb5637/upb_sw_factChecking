@@ -34,7 +34,6 @@ class TestSetTest {
 
 
         TestSet shortInput = new TestSet(path);
-        shortInput.loadStatements();
         List<TestSet.TestSetEntry> allEntries = shortInput.getEntries();
         System.out.print(allEntries);
         Files.delete(path);

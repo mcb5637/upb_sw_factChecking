@@ -36,7 +36,6 @@ class TrainingSetTest {
                     StandardOpenOption.APPEND);
 
             TrainingSet shortInput = new TrainingSet(path);
-            shortInput.loadStatements();
             List<TrainingSet.TrainingSetEntry> allEntries = shortInput.getEntries();
             System.out.print(allEntries);
             Files.delete(path);
