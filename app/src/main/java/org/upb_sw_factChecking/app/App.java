@@ -1,4 +1,4 @@
-package org.upb_sw_factChecking;
+package org.upb_sw_factChecking.app;
 
 import org.slf4j.Logger;
 
