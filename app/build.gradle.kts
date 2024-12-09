@@ -26,6 +26,8 @@ dependencies {
     implementation("ch.qos.logback:logback-core:1.5.12")
     implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("ch.qos.logback:logback-classic:1.5.12")
+    implementation("info.picocli:picocli:4.7.6")
+    annotationProcessor("info.picocli:picocli:4.7.6")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -43,4 +45,9 @@ application {
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+tasks.withType<JavaCompile> {
+    val compilerArgs = options.compilerArgs
+    compilerArgs.add("-Aproject=${project.group}/${project.name}")
 }
