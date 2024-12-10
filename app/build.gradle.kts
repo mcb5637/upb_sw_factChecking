@@ -8,6 +8,7 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+    id("com.gradleup.shadow") version "9.0.0-beta4"
 }
 
 repositories {
@@ -48,6 +49,14 @@ tasks.named<Test>("test") {
 }
 
 tasks.withType<JavaCompile> {
+    // relevant for picocli annotation processor
     val compilerArgs = options.compilerArgs
     compilerArgs.add("-Aproject=${project.group}/${project.name}")
+}
+
+// Output to build/libs/shadow.jar
+tasks.named<Jar>("shadowJar") {
+    archiveBaseName = "upb_sw_factChecking"
+    archiveVersion = ""
+    archiveClassifier  = ""
 }
