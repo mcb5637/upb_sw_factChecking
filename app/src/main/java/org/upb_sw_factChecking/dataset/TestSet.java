@@ -15,7 +15,7 @@ import java.util.List;
 public class TestSet {
 
     public record TestSetEntry(Resource factIri, Statement statement) {
-        TrainingSet.TrainingSetEntry toTrainingSetEntry(double truthValue) {
+        public TrainingSet.TrainingSetEntry toTrainingSetEntry(double truthValue) {
             return new TrainingSet.TrainingSetEntry(factIri, statement, truthValue);
         }
     }
