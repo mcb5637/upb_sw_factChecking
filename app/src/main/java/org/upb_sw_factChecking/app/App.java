@@ -1,7 +1,8 @@
 package org.upb_sw_factChecking.app;
 
+import ch.qos.logback.classic.Level;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.RDFDataMgr;
 import org.slf4j.Logger;
 import org.upb_sw_factChecking.FactChecker;
 import org.upb_sw_factChecking.dataset.Fokgsw2024;
@@ -52,7 +53,13 @@ public class App {
         }
     }
 
-    @Command(name = "evaluate", description = "Evaluate the systems performance against a training set.")
+    @Command(
+            name = "evaluate",
+            description = "Evaluate the systems performance against a training set.",
+            usageHelpAutoWidth = true,
+            separator = " ",
+            showDefaultValues = true
+    )
     static class Evaluate implements Runnable {
         @Mixin
         CommandLineOptions options;
@@ -60,6 +67,7 @@ public class App {
         @Override
         public void run() {
             // Load the training set
+            logger.info("Loading training set.");
             TrainingSet trainingSet;
             if (options.testData.useDefaultData) {
                 trainingSet = Fokgsw2024.getTrainingSet();
@@ -73,16 +81,21 @@ public class App {
             }
 
             // Load database + ontology
-            Model model = ModelFactory.createDefaultModel();
+            logger.info("Loading database and ontology.");
+            Model model = RDFDataMgr.loadModel(options.database.dumpFile);
+            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
             // Evaluate
-            final var factChecker = new FactChecker(model.getGraph());
+            logger.info("Inferring rules.");
+            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
+            logger.info("Evaluating system.");
+            logger.info("Checking {} facts.", trainingSet.getEntries().size());
             var averageError = 0.0;
             for (var entry : trainingSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());
                 final double error = Math.abs(truthValue - entry.truthValue());
                 averageError += error;
-                logger.info("Truth value for {} is {}, error is {}", entry.statement(), truthValue, error);
+                logger.info("Truth value for {} is {}, expected was {}, error is {}.", entry.statement(), truthValue, entry.truthValue(), error);
             }
             averageError /= trainingSet.getEntries().size();
             logger.info("Average error: {}", averageError);
@@ -116,10 +129,13 @@ public class App {
             }
 
             // Load database + ontology
-            Model model = ModelFactory.createDefaultModel();
+            logger.info("Loading database and ontology.");
+            Model model = RDFDataMgr.loadModel(options.database.dumpFile);
+            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
             // Evaluate
-            final var factChecker = new FactChecker(model.getGraph());
+            logger.info("Inferring rules.");
+            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
             for (var entry : testSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());

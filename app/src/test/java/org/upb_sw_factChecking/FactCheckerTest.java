@@ -17,7 +17,7 @@ class FactCheckerTest {
                 <http://ex/2> a owl:DatatypeProperty.
                 <http://ex/1> a owl:SymmetricProperty.
                 <http://ex/1> <http://ex/2> true.
-                <http://ex/2> <http://ex/1> <http://ex/3>.""", Lang.TURTLE).toGraph());
+                <http://ex/2> <http://ex/1> <http://ex/3>.""", Lang.TURTLE).toGraph(), null);
         Model m = ModelFactory.createDefaultModel();
 
         // stated in facts
