@@ -1,4 +1,4 @@
-<http://rdf.freebase.com/ns/base.words.grammatical_case.found_in_languages> <http://www.w3.org/2000/01/rdf-schema#domain <http://rdf.freebase.com/ns/base.words.grammatical_case> .
+<http://rdf.freebase.com/ns/base.words.grammatical_case.found_in_languages> <http://www.w3.org/2000/01/rdf-schema#domain> <http://rdf.freebase.com/ns/base.words.grammatical_case> .
 <http://rdf.freebase.com/ns/m.038bht> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rdf.freebase.com/ns/film.actor> .
 <http://rdf.freebase.com/ns/m.0dsvzh> <http://www.w3.org/2000/01/rdf-schema#label> "Gone Baby Gone"@en .
 <http://rdf.freebase.com/ns/m.0jbqf> <http://www.w3.org/2000/01/rdf-schema#label> "Colorado Avalanche"@en .
