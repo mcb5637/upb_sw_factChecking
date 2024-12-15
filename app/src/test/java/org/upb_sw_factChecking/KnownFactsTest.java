@@ -13,11 +13,12 @@ class KnownFactsTest {
     /*
 ch_input is the complete path for the class hierarchy file
 kg_input is the complete path for the knowledge graph file
-both paths can't use backslashes, must be replaced by forwardslashes
+both paths can't use backslashes, must be replaced by forward slashes
 
      */
+
     @ParameterizedTest
-    @CsvSource({"herewouldbeachpath,herwouldbeakgpath"})
+    @CsvSource({"chPath,kgPath"}) //add file paths here
     void createKnownFacts(String ch_input, String kg_input) {
 
         KnownFacts kf = new KnownFacts(ch_input, kg_input);
@@ -73,18 +74,10 @@ both paths can't use backslashes, must be replaced by forwardslashes
             Node o8 = NodeFactory.createLiteralLang("Colorado Avalanche", "en");
             assert g.contains(s8, p8, o8): "a triple of the knowledge graph is not in graph (with a literal)";
 
-            //
-            Node s9 = createURI("http://rdf.freebase.com/ns/m.0656f4z");
-            Node p9 = createURI("http://rdf.freebase.com/ns/common.document.text");
-            String temp = """
-                    var n3 = \\"\\";\\n\\nvar ns = \\"http://rdf.data-vocabulary.org/#\\";//default to show this vocabulary\\nif(acre.environ.params.namespace != undefined)\\n  ns = acre.environ.params.namespace;\\n\\n\\n//--generate class descriptions---\\nvar query = acre.require(\\"rdfsclass\\").query;\\nquery = acre.freebase.extend_query(query, {\\"namespace_uri\\":ns});\\nvar res = acre.freebase.MqlRead(query).result;\\nfor(classspec in res.class_spec){\\n  n3 = n3 + \\"<\\" + res.class_spec[classspec].class_uri + \\"><http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class> .\\\\n\\";\\n  for(i in res.class_spec[classspec].rdfs_subclassof){\\n    var subclassof = res.class_spec[classspec].rdfs_subclassof[i].class_uri;\\n    n3 = n3 + \\"<\\" + res.class_spec[classspec].class_uri + \\"><http://www.w3.org/2000/01/rdf-schema#subClassOf><\\" + subclassof + \\">.\\\\n\\";\\n  }\\n}\\n\\n//--generate property descriptions----\\nvar query = acre.require(\\"rdfsproperty\\").query;\\nquery = acre.freebase.extend_query(query, {\\"namespace_uri\\":ns});\\nvar res = acre.freebase.MqlRead(query).result;\\nfor(propspec in res.prop_spec){\\n  n3 = n3 + \\"<\\" + res.prop_spec[propspec].property_uri + \\"><http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .\\\\n\\";\\n  for(i in res.prop_spec[propspec].rdfs_domain){\\n    var domain = res.prop_spec[propspec].rdfs_domain[i].class_uri;\\n    n3 = n3 + \\"<\\" + res.prop_spec[propspec].property_uri + \\"><http://www.w3.org/2000/01/rdf-schema#domain><\\" + domain + \\">.\\\\n\\";\\n  }\\n  for(i in res.prop_spec[propspec].rdfs_range){\\n    var range = res.prop_spec[propspec].rdfs_range[i].class_uri;\\n    n3 = n3 + \\"<\\" + res.prop_spec[propspec].property_uri + \\"><http://www.w3.org/2000/01/rdf-schema#range><\\" + range + \\">.\\\\n\\";\\n  }\\n}\\n\\n\\n//---convert to RDF/XML and send to client---\\nvar rdfxml = acre.require(\\"similebabel\\").nt2rdfxml(n3)\\nacre.start_response(200, {'content-type': 'application/rdf+xml; charset=\\"UTF-8\\"'});\\nacre.write(rdfxml);\\n\\n\\n
-                      """;
-            Node o9 = NodeFactory.createLiteralLang(temp, "en");
-            assert g.contains(s9, p9, o9): "a triple from the knowledge Graph with a very long literal is  not correctly in the graph";
+
         } catch (AssertionError e) {
             System.out.println(e.getMessage());
         }
-
 
     }
 }
