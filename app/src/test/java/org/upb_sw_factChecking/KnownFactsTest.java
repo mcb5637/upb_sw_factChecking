@@ -18,7 +18,7 @@ both paths can't use backslashes, must be replaced by forward slashes
      */
 
     @ParameterizedTest
-    @CsvSource({"app/src/main/resources/testing-ch-and-kg/reduced_classHierarchy.nt, app/src/main/resources/testing-ch-and-kg/reduced_knowledgeGraph.nt"})
+    @CsvSource({"src/test/resources/testing-ch-and-kg/reduced_classHierarchy.nt, src/test/resources/testing-ch-and-kg/reduced_knowledgeGraph.nt"})
     void createKnownFacts(String ch_input, String kg_input) {
 
         KnownFacts kf = new KnownFacts(ch_input, kg_input);
