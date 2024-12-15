@@ -28,7 +28,7 @@ public class App {
         public String outputFile = "result.ttl";
 
         static class TestData {
-            @Option(names = {"fokgsw"}, description = "yupp 🐥🐥🐥")
+            @Option(names = {"fokgsw"}, description = "Use default data from FoKG SW 2024")
             Boolean useDefaultData;
             @Option(names = {"-T", "--test-file"}, description = "Path to test data")
             String test;
