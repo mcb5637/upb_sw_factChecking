@@ -40,7 +40,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "org.upb_sw_factChecking.App"
+    mainClass = "org.upb_sw_factChecking.app.App"
 }
 
 tasks.named<Test>("test") {
