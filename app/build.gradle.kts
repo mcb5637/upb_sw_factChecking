@@ -8,6 +8,7 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+    id("com.gradleup.shadow") version "9.0.0-beta4"
 }
 
 repositories {
@@ -26,6 +27,8 @@ dependencies {
     implementation("ch.qos.logback:logback-core:1.5.12")
     implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("ch.qos.logback:logback-classic:1.5.12")
+    implementation("info.picocli:picocli:4.7.6")
+    annotationProcessor("info.picocli:picocli:4.7.6")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -37,10 +40,23 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = "org.upb_sw_factChecking.App"
+    mainClass = "org.upb_sw_factChecking.app.App"
 }
 
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+tasks.withType<JavaCompile> {
+    // relevant for picocli annotation processor
+    val compilerArgs = options.compilerArgs
+    compilerArgs.add("-Aproject=${project.group}/${project.name}")
+}
+
+// Output to build/libs/shadow.jar
+tasks.named<Jar>("shadowJar") {
+    archiveBaseName = "upb_sw_factChecking"
+    archiveVersion = ""
+    archiveClassifier  = ""
 }

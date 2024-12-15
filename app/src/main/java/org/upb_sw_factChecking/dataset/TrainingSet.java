@@ -71,7 +71,7 @@ public class TrainingSet {
         return entries;
     }
 
-    public void serializeToResultFile(Path path) throws IOException {
+    public static void serializeToResultFile(List<TrainingSetEntry> entries, Path path) throws IOException {
         Files.write(path, entries.stream().map(entry -> {
             final var m = ModelFactory.createDefaultModel();
             final var baos = new ByteArrayOutputStream();

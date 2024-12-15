@@ -5,6 +5,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.upb_sw_factChecking.app.App;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
