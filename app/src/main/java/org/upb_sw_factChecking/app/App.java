@@ -136,6 +136,8 @@ public class App {
     }
 
     public static void main(String[] args) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.INFO);
         new CommandLine(new App()).execute(args);
     }
 
