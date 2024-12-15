@@ -23,6 +23,6 @@ java -jar upb_sw_factChecking.jar
 The application has two commands `check` and `evaluate`.
 
 ```shell
-java -jar upb_sw_factChecking.jar check    [ fokgsw | --test-file  ... ]  [ --endpoint URL | --rdf-file ... ] [ --ontology-file ... ] [ --output-file ... ]
-java -jar upb_sw_factChecking.jar evaluate [ fokgsw | --train-file ... ]  [ --endpoint URL | --rdf-file ... ] [ --ontology-file ... ] [ --output-file ... ]
+java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE )  ( --endpoint URL | --rdf-file FILE ) --ontology-file FILE [ --output-file FILE ]
+java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE )  ( --endpoint URL | --rdf-file FILE ) --ontology-file FILE [ --output-file FILE ]
 ```
