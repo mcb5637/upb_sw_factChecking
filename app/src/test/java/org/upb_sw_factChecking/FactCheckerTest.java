@@ -13,11 +13,11 @@ class FactCheckerTest {
     void basicTest() {
 
         FactChecker c = new FactChecker(RDFParser.fromString("""
+                <http://ex/1> <http://ex/2> true.
+                <http://ex/2> <http://ex/1> <http://ex/3>.""", Lang.TURTLE).toGraph(), RDFParser.fromString("""
                 @prefix owl: <http://www.w3.org/2002/07/owl#>.
                 <http://ex/2> a owl:DatatypeProperty.
-                <http://ex/1> a owl:SymmetricProperty.
-                <http://ex/1> <http://ex/2> true.
-                <http://ex/2> <http://ex/1> <http://ex/3>.""", Lang.TURTLE).toGraph(), null);
+                <http://ex/1> a owl:SymmetricProperty.""", Lang.TURTLE).toGraph());
         Model m = ModelFactory.createDefaultModel();
 
         // stated in facts

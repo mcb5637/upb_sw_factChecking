@@ -13,10 +13,10 @@ public class FactChecker {
 
     public FactChecker(Graph knownFacts, Graph ontology) {
         knownReasoner = ReasonerRegistry.getOWLReasoner().bindSchema(ontology);
-        Model tmp = ModelFactory.createDefaultModel();
-        knownFacts.stream().map(t -> ResourceFactory.createStatement(ResourceFactory.createResource(t.getSubject().toString()), ResourceFactory.createProperty(t.getPredicate().toString()), ResourceFactory.createResource(t.getObject().toString()))).forEach(tmp::add);
-        ontology.stream().map(t -> ResourceFactory.createStatement(ResourceFactory.createResource(t.getSubject().toString()), ResourceFactory.createProperty(t.getPredicate().toString()), ResourceFactory.createResource(t.getObject().toString()))).forEach(tmp::add);
-        inferred = ReasonerRegistry.getOWLReasoner().bind(tmp.getGraph());
+        Graph tmp = ModelFactory.createDefaultModel().getGraph();
+        knownFacts.stream().forEach(tmp::add);
+        ontology.stream().forEach(tmp::add);
+        inferred = ReasonerRegistry.getOWLReasoner().bind(tmp);
     }
 
     public double check(Statement toCheck) {
