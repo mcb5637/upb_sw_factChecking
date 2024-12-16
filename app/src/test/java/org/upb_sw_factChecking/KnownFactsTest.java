@@ -30,22 +30,22 @@ both paths can't use backslashes, must be replaced by forward slashes
             Node s1 = createURI("http://rdf.freebase.com/ns/user.brendankwilliams.default_domain.inflation_rate");
             Node p1 = createURI("http://www.w3.org/2000/01/rdf-schema#subClassOf");
             Node o1 = createURI("http://rdf.freebase.com/ns/base.schemastaging.context_name");
-            assert g.contains(s1, p1, o1): "a triple of class hierarchy is not in graph";
+            assert g.contains(s1, p1, o1): "a triple of class hierarchy is not in graph \n" + s1 + "\n" + p1 + "\n" + o1;
 
             Node s2 = createURI("http://rdf.freebase.com/ns/music.album");
             Node p2 = createURI("http://www.w3.org/2000/01/rdf-schema#subClassOf");
             Node o2 = createURI("http://rdf.freebase.com/ns/fictional_universe.character_occupation");
-            assert g.contains(s2, p2, o2): "a triple  of class hierarchy is not in graph";
+            assert g.contains(s2, p2, o2): "a triple of class hierarchy is not in graph \n" + s2 + "\n" + p2 + "\n" + o2;
 
             Node s3 = createURI("http://rdf.freebase.com/ns/base.famousobjects.famous_object");
             Node p3 = createURI("http://www.w3.org/2000/01/rdf-schema#subClassOf");
             Node o3 = createURI("http://rdf.freebase.com/ns/base.academia.topic");
-            assert g.contains(s3, p3, o3): "a triple  of class hierarchy is not in graph";
+            assert g.contains(s3, p3, o3): "a triple of class hierarchy is not in graph \n" + s3 + "\n" + p3 + "\n" + o3;
 
             Node s4 = createURI("http://rdf.freebase.com/ns/base.siswimsuitmodels.si_swimsuit_model");
             Node p4 = createURI("http://www.w3.org/2000/01/rdf-schema#subClassOf");
             Node o4 = createURI("http://rdf.freebase.com/ns/people.person");
-            assert g.contains(s4, p4, o4): "a triple  of class hierarchy is not in graph";
+            assert g.contains(s4, p4, o4): "a triple of class hierarchy is not in graph \n" + s4 + "\n" + p4 + "\n" + o4;
 
         } catch (AssertionError e) {
             System.out.println(e.getMessage());
@@ -57,22 +57,22 @@ both paths can't use backslashes, must be replaced by forward slashes
             Node s5 = createURI("http://rdf.freebase.com/ns/base.words.grammatical_case.found_in_languages");
             Node p5 = createURI("http://www.w3.org/2000/01/rdf-schema#domain");
             Node o5 = createURI("http://rdf.freebase.com/ns/base.words.grammatical_case");
-            assert g.contains(s5, p5, o5): "a triple of the knowledge graph is not in graph (not with a literal)";
+            assert g.contains(s5, p5, o5): "a triple of the knowledge graph is not in graph (not with a literal) \n" + s5 + "\n" + p5 + "\n" + o5;
 
             Node s6 = createURI("http://rdf.freebase.com/ns/m.038bht");
             Node p6 = createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
             Node o6 = createURI("http://rdf.freebase.com/ns/film.actor");
-            assert g.contains(s6, p6, o6): "a triple of the knowledge graph is not in graph (not with a literal)";
+            assert g.contains(s6, p6, o6): "a triple of the knowledge graph is not in graph (not with a literal) \n" + s6 + "\n" + p6 + "\n" + o6;
 
             Node s7 = createURI("http://rdf.freebase.com/ns/m.0dsvzh");
             Node p7 = createURI("http://www.w3.org/2000/01/rdf-schema#label");
             Node o7 = NodeFactory.createLiteralLang("Gone Baby Gone", "en");
-            assert g.contains(s7, p7, o7): "a triple of the knowledge graph is not in graph (with a literal)";
+            assert g.contains(s7, p7, o7): "a triple of the knowledge graph is not in graph (with a literal) \n" + s7 + "\n" + p7 + "\n" + o7;
 
             Node s8 = createURI("http://rdf.freebase.com/ns/m.0jbqf");
             Node p8 = createURI("http://www.w3.org/2000/01/rdf-schema#label");
             Node o8 = NodeFactory.createLiteralLang("Colorado Avalanche", "en");
-            assert g.contains(s8, p8, o8): "a triple of the knowledge graph is not in graph (with a literal)";
+            assert g.contains(s8, p8, o8): "a triple of the knowledge graph is not in graph (with a literal) \n" + s8 + "\n" + p8 + "\n" + o8;
 
 
         } catch (AssertionError e) {
