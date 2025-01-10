@@ -2,7 +2,9 @@ package org.upb_sw_factChecking.app;
 
 import ch.qos.logback.classic.Level;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.vocabulary.RDFS;
 import org.slf4j.Logger;
 import org.upb_sw_factChecking.FactChecker;
 import org.upb_sw_factChecking.dataset.Fokgsw2024;
@@ -17,6 +19,7 @@ import picocli.CommandLine.ArgGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 @Command(name = "", subcommands = {App.Check.class, App.Evaluate.class}, customSynopsis = "[evaluate | check] [OPTIONS]")
@@ -51,6 +54,9 @@ public class App {
             @Option(names = {"-d", "--dump-file"}, description = "Dump file", paramLabel = "<FILE>")
             String dumpFile;
         }
+
+        @Option(names = {"--display-labels"}, description = "Display labels instead of URIs", defaultValue = "true")
+        boolean displayLabels;
     }
 
     @Command(
@@ -95,7 +101,9 @@ public class App {
                 final double truthValue = factChecker.check(entry.statement());
                 final double error = Math.abs(truthValue - entry.truthValue());
                 averageError += error;
-                logger.info("Truth value for {} is {}, expected was {}, error is {}.", entry.statement(), truthValue, entry.truthValue(), error);
+                logger.info("Truth value for {} is {}, expected was {}, error is {}.",
+                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                        truthValue, entry.truthValue(), error);
             }
             averageError /= trainingSet.getEntries().size();
             logger.info("Average error: {}", averageError);
@@ -139,7 +147,9 @@ public class App {
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
             for (var entry : testSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());
-                logger.info("Truth value for {} is {}", entry.statement(), truthValue);
+                logger.info("Truth value for {} is {}",
+                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                        truthValue);
                 results.add(entry.toTrainingSetEntry(truthValue));
             }
             try {
@@ -155,6 +165,17 @@ public class App {
         ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
         root.setLevel(Level.INFO);
         new CommandLine(new App()).execute(args);
+    }
+
+    private static String labeledStatement(Model m, Statement statement) {
+        AtomicReference<String> subjectLabel = new AtomicReference<>(statement.getSubject().getURI());
+        AtomicReference<String> predicateLabel = new AtomicReference<>(statement.getPredicate().getURI());
+        String objectLabel = statement.getObject().isResource() ? statement.getObject().asResource().getURI() : statement.getObject().asLiteral().getString();
+
+        m.listObjectsOfProperty(statement.getSubject(), RDFS.label).forEachRemaining(o -> subjectLabel.set(o.asLiteral().getString()));
+        m.listObjectsOfProperty(statement.getPredicate(), RDFS.label).forEachRemaining(o -> predicateLabel.set(o.asLiteral().getString()));
+
+        return String.format("%s %s %s", subjectLabel, predicateLabel, objectLabel);
     }
 
 }
