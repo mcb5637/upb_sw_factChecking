@@ -101,7 +101,7 @@ public class App {
                 final double truthValue = factChecker.check(entry.statement());
                 final double error = Math.abs(truthValue - entry.truthValue());
                 averageError += error;
-                logger.info("Truth value for {} is {}, expected was {}, error is {}.",
+                logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
                         options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
                         truthValue, entry.truthValue(), error);
             }
@@ -147,7 +147,7 @@ public class App {
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
             for (var entry : testSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());
-                logger.info("Truth value for {} is {}",
+                logger.info("Truth value for '{}' is {}",
                         options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
                         truthValue);
                 results.add(entry.toTrainingSetEntry(truthValue));
@@ -170,10 +170,11 @@ public class App {
     private static String labeledStatement(Model m, Statement statement) {
         AtomicReference<String> subjectLabel = new AtomicReference<>(statement.getSubject().getURI());
         AtomicReference<String> predicateLabel = new AtomicReference<>(statement.getPredicate().getURI());
-        String objectLabel = statement.getObject().isResource() ? statement.getObject().asResource().getURI() : statement.getObject().asLiteral().getString();
+        AtomicReference<String> objectLabel = new AtomicReference<>(statement.getObject().isResource() ? statement.getObject().asResource().getURI() : statement.getObject().asLiteral().getString());
 
         m.listObjectsOfProperty(statement.getSubject(), RDFS.label).forEachRemaining(o -> subjectLabel.set(o.asLiteral().getString()));
         m.listObjectsOfProperty(statement.getPredicate(), RDFS.label).forEachRemaining(o -> predicateLabel.set(o.asLiteral().getString()));
+        m.listObjectsOfProperty(statement.getObject().isResource() ? statement.getObject().asResource() : statement.getPredicate(), RDFS.label).forEachRemaining(o -> objectLabel.set(o.asLiteral().getString()));
 
         return String.format("%s %s %s", subjectLabel, predicateLabel, objectLabel);
     }
