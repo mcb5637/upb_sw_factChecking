@@ -5,7 +5,9 @@ import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.Reasoner;
+import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,7 @@ public class WeightedRule {
     public Reasoner reasoner;
     public boolean isPositive;
     public double weight;
+    public InfGraph infered;
 
     private static final double alpha = 0.1;
     private static final double beta = 0.9;
@@ -43,6 +46,10 @@ public class WeightedRule {
             result[i] = new WeightedRule();
             result[i].rule = rules[i];
             result[i].isPositive = isPositive;
+            ArrayList<Rule> rlist = new ArrayList<>();
+            rlist.add(rules[i]);
+            result[i].reasoner = new GenericRuleReasoner(rlist);
+            result[i].infered = result[i].reasoner.bind(baseModel.getGraph());
         }
 
         return result;
@@ -149,7 +156,7 @@ public class WeightedRule {
     }
 
     public boolean doesRuleApply(Statement s) {
-        return false; // TODO
+        return infered.contains(s.asTriple());
     }
 
     public void calculateWeight(Model baseModel, Model examples, Model counters) {
