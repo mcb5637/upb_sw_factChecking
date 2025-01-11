@@ -12,6 +12,9 @@ import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +35,13 @@ public class WeightedRule {
 
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
+    public WeightedRule(Rule rule, boolean isPositive) {
+        this.rule = rule;
+        this.isPositive = isPositive;
+        this.weight = 0.0;              // default value
+        this.reasoner = new GenericRuleReasoner(List.of(rule));
+    }
+
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
         Model localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
         Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), maxPathLength);
@@ -39,10 +49,7 @@ public class WeightedRule {
 
         WeightedRule[] result = new WeightedRule[rules.length];
         for (int i = 0; i < rules.length; i++) {
-            result[i] = new WeightedRule();
-            result[i].rule = rules[i];
-            result[i].isPositive = isPositive;
-            result[i].reasoner = new GenericRuleReasoner(List.of(rules[i]));
+            result[i] = new WeightedRule(rules[i], isPositive);
             result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
         }
 
@@ -168,5 +175,32 @@ public class WeightedRule {
                 ++i;
         }
         return i;
+    }
+
+    public static WeightedRule[] loadRules(Path file, Model baseModel) throws IOException {
+        WeightedRule[] rules;
+        try (var reader = Files.newBufferedReader(file)) {
+            final var ruleCount = Integer.parseInt(reader.readLine());
+            rules = new WeightedRule[ruleCount];
+            for (int i = 0; i < ruleCount; i++) {
+                final var line = reader.readLine();
+                final var split = line.split(";");
+                rules[i] = new WeightedRule(Rule.parseRule(split[1]), split[0].trim().equals("positive"));
+                rules[i].weight = Double.parseDouble(split[2]);
+                rules[i].inferred = rules[i].reasoner.bind(baseModel.getGraph());
+            }
+        }
+        return rules;
+    }
+
+    public static void serializeRules(WeightedRule[] rules, Path file) throws IOException {
+        try (var writer = Files.newBufferedWriter(file)) {
+            writer.write(rules.length);
+            writer.newLine();
+            for (WeightedRule rule : rules) {
+                writer.write(String.format("%s; %s; %f", rule.isPositive ? "positive" : "negative", rule.rule.toShortString(), rule.weight));
+                writer.newLine();
+            }
+        }
     }
 }
