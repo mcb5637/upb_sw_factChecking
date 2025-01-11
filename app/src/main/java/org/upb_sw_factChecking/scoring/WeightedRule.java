@@ -24,17 +24,13 @@ public class WeightedRule {
     public Reasoner reasoner;
     public boolean isPositive;
     public double weight;
-    public InfGraph infered;
+    public InfGraph inferred;
 
     private static final double alpha = 0.1;
     private static final double beta = 0.9;
     private static final double gamma = 0.25;
 
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
-
-    public WeightedRule() {
-
-    }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
         Model localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
@@ -46,10 +42,8 @@ public class WeightedRule {
             result[i] = new WeightedRule();
             result[i].rule = rules[i];
             result[i].isPositive = isPositive;
-            ArrayList<Rule> rlist = new ArrayList<>();
-            rlist.add(rules[i]);
-            result[i].reasoner = new GenericRuleReasoner(rlist);
-            result[i].infered = result[i].reasoner.bind(baseModel.getGraph());
+            result[i].reasoner = new GenericRuleReasoner(List.of(rules[i]));
+            result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
         }
 
         return result;
@@ -156,7 +150,7 @@ public class WeightedRule {
     }
 
     public boolean doesRuleApply(Statement s) {
-        return infered.contains(s.asTriple());
+        return inferred.contains(s.asTriple());
     }
 
     public void calculateWeight(Model baseModel, Model examples, Model counters) {
