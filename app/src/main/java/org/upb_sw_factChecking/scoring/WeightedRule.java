@@ -23,6 +23,10 @@ public class WeightedRule {
     public boolean isPositive;
     public double weight;
 
+    private static final double alpha = 0.1;
+    private static final double beta = 0.9;
+    private static final double gamma = 0.25;
+
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
     public WeightedRule() {
@@ -34,8 +38,14 @@ public class WeightedRule {
         Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), maxPathLength);
         Rule[] rules = createRules(paths, example);
 
+        WeightedRule[] result = new WeightedRule[rules.length];
+        for (int i = 0; i < rules.length; i++) {
+            result[i] = new WeightedRule();
+            result[i].rule = rules[i];
+            result[i].isPositive = isPositive;
+        }
 
-        return null;
+        return result;
     }
 
     public static Model createLocalGraph(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
@@ -68,7 +78,7 @@ public class WeightedRule {
             }
         }
 
-        // TODO: add unequal predicates 🤷‍♂️
+        // TODO: add unequal predicates
 
         return localGraph;
     }
@@ -136,5 +146,26 @@ public class WeightedRule {
             rules.add(Rule.parseRule(String.join(", ", bodyStrings) + " -> " + headString + " ."));
         }
         return rules.toArray(new Rule[0]);
+    }
+
+    public boolean doesRuleApply(Statement s) {
+        return false; // TODO
+    }
+
+    public void calculateWeight(Model baseModel, Model examples, Model counters) {
+        double ecorr = countNumberOfMatchingExamples(examples);
+        double ecounter = countNumberOfMatchingExamples(counters);
+        double wr = alpha * (1 - (ecorr / examples.size())) + beta * (ecounter / counters.size());
+        weight = 1 - (ecorr - 1/gamma * ecounter) / ecorr * (1 - wr);
+    }
+
+    private int countNumberOfMatchingExamples(Model examples) {
+        int i = 0;
+        for (StmtIterator it = examples.listStatements(); it.hasNext(); ) {
+            Statement s = it.next();
+            if (doesRuleApply(s))
+                ++i;
+        }
+        return i;
     }
 }
