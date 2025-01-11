@@ -24,6 +24,7 @@ dependencies {
 
     // This dependency is used by the application.
     implementation("org.apache.jena:apache-jena-libs:5.2.0")
+    implementation("org.apache.jena:jena-querybuilder:5.2.0")
     implementation("ch.qos.logback:logback-core:1.5.12")
     implementation("org.slf4j:slf4j-api:2.0.16")
     implementation("ch.qos.logback:logback-classic:1.5.12")
