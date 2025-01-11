@@ -4,7 +4,7 @@ import org.apache.jena.rdf.model.Statement;
 
 
 public class EvidenceTruthScoring {
-    // finds the strongest positive and negative rule that covers the statement and computes the truthscore
+    // finds the strongest positive and negative rule that covers the statement and computes the truthScore
     double maxPositiveW;
     double maxNegativeW;
     Statement statement;
@@ -17,6 +17,28 @@ public class EvidenceTruthScoring {
         //this.rules = rules;
 
     }
+
+    public void findStrongestCoveringRules(){
+        double ruleWeight = 0.0;
+        double currentMaxPosW = 0.0;
+        double currentMaxNegW = 0.0;
+        // TODO iterate through all rules. If rule covers Statement, compute weight "ruleWeight"/look up weight
+        // TODO check if rule is pos rule or neg rule
+        // depends on how rules are implemented
+
+        // if ruletype pos:
+        if (ruleWeight > currentMaxPosW){
+            currentMaxPosW = ruleWeight;
+        }
+        // if ruletype neg:
+        if (ruleWeight > currentMaxPosW){
+            currentMaxNegW = ruleWeight;
+        }
+        // change class variables at the end
+        maxPositiveW = currentMaxPosW;
+        maxNegativeW = currentMaxNegW;
+    }
+
 
     public double computeScore(double maxPositiveW, double maxNegativeW) {
         final double truthScore;
