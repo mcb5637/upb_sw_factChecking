@@ -1,4 +1,4 @@
-<http://rdf.freebase.com/ns/user.brendankwilliams.default_domain.inflation_rate> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://rdf.freebase.com/ns/base.schemastaging.topic> .
+<http://rdf.freebase.com/ns/user.brendankwilliams.default_domain.inflation_rate> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://rdf.freebase.com/ns/base.schemastaging.context_name> .
 <http://rdf.freebase.com/ns/music.album> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://rdf.freebase.com/ns/fictional_universe.character_occupation> .
 <http://rdf.freebase.com/ns/base.mtgbase.topic> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://rdf.freebase.com/ns/common.topic> .
 <http://rdf.freebase.com/ns/base.mtgbase.topic> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://rdf.freebase.com/ns/visual_art.color> .
