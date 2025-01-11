@@ -25,6 +25,6 @@ The `check` command checks the correctness of rdf statements in the given test f
 The `evaluate` command evaluates the systems performance against a training set.
 
 ```shell
-java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE )  ( --endpoint URL | --rdf-file FILE ) --ontology-file FILE [ --output-file FILE ]
-java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE )  ( --endpoint URL | --rdf-file FILE ) --ontology-file FILE [ --output-file FILE ]
+java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE )  ( --endpoint URL | --dump-file FILE ) --owl-file FILE [ --output-file FILE ]
+java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE )  ( --endpoint URL | --dump-file FILE ) --owl-file FILE [ --output-file FILE ]
 ```

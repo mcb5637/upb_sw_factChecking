@@ -1,9 +1,7 @@
 package org.upb_sw_factChecking;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.*;
 import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.Reasoner;
 import org.apache.jena.reasoner.ReasonerRegistry;
@@ -13,9 +11,12 @@ public class FactChecker {
     private final Reasoner knownReasoner;
     private final InfGraph inferred;
 
-    public FactChecker(Graph knownFacts) {
-        knownReasoner = ReasonerRegistry.getOWLReasoner().bindSchema(knownFacts);
-        inferred = ReasonerRegistry.getOWLReasoner().bind(knownFacts);
+    public FactChecker(Graph knownFacts, Graph ontology) {
+        knownReasoner = ReasonerRegistry.getOWLReasoner().bindSchema(ontology);
+        Graph tmp = ModelFactory.createDefaultModel().getGraph();
+        knownFacts.stream().forEach(tmp::add);
+        ontology.stream().forEach(tmp::add);
+        inferred = ReasonerRegistry.getOWLReasoner().bind(tmp);
     }
 
     public double check(Statement toCheck) {

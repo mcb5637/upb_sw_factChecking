@@ -1,6 +1,8 @@
 package org.upb_sw_factChecking.dataset;
 
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +78,7 @@ public class TrainingSet {
             final var m = ModelFactory.createDefaultModel();
             final var baos = new ByteArrayOutputStream();
             m.add(entry.getTruthValueStatement());
-            m.write(baos, "Turtle");
+            RDFDataMgr.write(baos, m, Lang.TURTLE);
             return baos.toString(StandardCharsets.UTF_8);
         }).toList(), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }

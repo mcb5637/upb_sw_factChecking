@@ -1,7 +1,10 @@
 package org.upb_sw_factChecking.app;
 
+import ch.qos.logback.classic.Level;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.vocabulary.RDFS;
 import org.slf4j.Logger;
 import org.upb_sw_factChecking.FactChecker;
 import org.upb_sw_factChecking.dataset.Fokgsw2024;
@@ -16,6 +19,7 @@ import picocli.CommandLine.ArgGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 @Command(name = "", subcommands = {App.Check.class, App.Evaluate.class}, customSynopsis = "[evaluate | check] [OPTIONS]")
@@ -50,9 +54,18 @@ public class App {
             @Option(names = {"-d", "--dump-file"}, description = "Dump file", paramLabel = "<FILE>")
             String dumpFile;
         }
+
+        @Option(names = {"--display-labels"}, description = "Display labels instead of URIs", defaultValue = "true")
+        boolean displayLabels;
     }
 
-    @Command(name = "evaluate", description = "Evaluate the systems performance against a training set.")
+    @Command(
+            name = "evaluate",
+            description = "Evaluate the systems performance against a training set.",
+            usageHelpAutoWidth = true,
+            separator = " ",
+            showDefaultValues = true
+    )
     static class Evaluate implements Runnable {
         @Mixin
         CommandLineOptions options;
@@ -60,6 +73,7 @@ public class App {
         @Override
         public void run() {
             // Load the training set
+            logger.info("Loading training set.");
             TrainingSet trainingSet;
             if (options.testData.useDefaultData) {
                 trainingSet = Fokgsw2024.getTrainingSet();
@@ -73,16 +87,23 @@ public class App {
             }
 
             // Load database + ontology
-            Model model = ModelFactory.createDefaultModel();
+            logger.info("Loading database and ontology.");
+            Model model = RDFDataMgr.loadModel(options.database.dumpFile);
+            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
             // Evaluate
-            final var factChecker = new FactChecker(model.getGraph());
+            logger.info("Inferring rules.");
+            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
+            logger.info("Evaluating system.");
+            logger.info("Checking {} facts.", trainingSet.getEntries().size());
             var averageError = 0.0;
             for (var entry : trainingSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());
                 final double error = Math.abs(truthValue - entry.truthValue());
                 averageError += error;
-                logger.info("Truth value for {} is {}, error is {}", entry.statement(), truthValue, error);
+                logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
+                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                        truthValue, entry.truthValue(), error);
             }
             averageError /= trainingSet.getEntries().size();
             logger.info("Average error: {}", averageError);
@@ -116,14 +137,19 @@ public class App {
             }
 
             // Load database + ontology
-            Model model = ModelFactory.createDefaultModel();
+            logger.info("Loading database and ontology.");
+            Model model = RDFDataMgr.loadModel(options.database.dumpFile);
+            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
             // Evaluate
-            final var factChecker = new FactChecker(model.getGraph());
+            logger.info("Inferring rules.");
+            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
             for (var entry : testSet.getEntries()) {
                 final double truthValue = factChecker.check(entry.statement());
-                logger.info("Truth value for {} is {}", entry.statement(), truthValue);
+                logger.info("Truth value for '{}' is {}",
+                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                        truthValue);
                 results.add(entry.toTrainingSetEntry(truthValue));
             }
             try {
@@ -136,7 +162,21 @@ public class App {
     }
 
     public static void main(String[] args) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.INFO);
         new CommandLine(new App()).execute(args);
+    }
+
+    private static String labeledStatement(Model m, Statement statement) {
+        AtomicReference<String> subjectLabel = new AtomicReference<>(statement.getSubject().getURI());
+        AtomicReference<String> predicateLabel = new AtomicReference<>(statement.getPredicate().getURI());
+        AtomicReference<String> objectLabel = new AtomicReference<>(statement.getObject().isResource() ? statement.getObject().asResource().getURI() : statement.getObject().asLiteral().getString());
+
+        m.listObjectsOfProperty(statement.getSubject(), RDFS.label).forEachRemaining(o -> subjectLabel.set(o.asLiteral().getString()));
+        m.listObjectsOfProperty(statement.getPredicate(), RDFS.label).forEachRemaining(o -> predicateLabel.set(o.asLiteral().getString()));
+        m.listObjectsOfProperty(statement.getObject().isResource() ? statement.getObject().asResource() : statement.getPredicate(), RDFS.label).forEachRemaining(o -> objectLabel.set(o.asLiteral().getString()));
+
+        return String.format("%s %s %s", subjectLabel, predicateLabel, objectLabel);
     }
 
 }
