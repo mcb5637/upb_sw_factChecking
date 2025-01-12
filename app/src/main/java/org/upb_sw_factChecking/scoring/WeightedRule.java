@@ -6,7 +6,6 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.*;
-import org.apache.jena.reasoner.Reasoner;
 import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
@@ -29,7 +28,6 @@ public class WeightedRule {
 
     public Rule rule;
     public Rule unboundRule;
-    public Reasoner reasoner;
     public boolean isPositive;
     public double weight;
     public Graph inferred;
@@ -48,7 +46,6 @@ public class WeightedRule {
         this.unboundRule = unboundRule;
         this.isPositive = isPositive;
         this.weight = 0.0;
-        this.reasoner = new GenericRuleReasoner(List.of(rule));
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
@@ -189,7 +186,7 @@ public class WeightedRule {
 
     public boolean doesRuleApply(Model baseModel, Statement s) {
         if (inferred == null) {
-            inferred = reasoner.bind(baseModel.getGraph()).getDeductionsGraph();
+            inferred = new GenericRuleReasoner(List.of(rule)).bind(baseModel.getGraph()).getDeductionsGraph();
         }
         return inferred.contains(s.asTriple());
     }
