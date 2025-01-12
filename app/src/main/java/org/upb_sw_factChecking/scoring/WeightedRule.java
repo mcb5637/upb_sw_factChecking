@@ -8,7 +8,6 @@ import org.apache.jena.rdf.model.*;
 import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.Reasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
-import org.apache.jena.sparql.exec.http.QueryExecutionHTTP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +32,12 @@ public class WeightedRule {
     public double weight;
     public InfGraph inferred;
 
-    private static final double alpha = 0.1;
-    private static final double beta = 0.9;
-    private static final double gamma = 0.25;
-
     private int numberOfCoveredExamples;
     private int numberOfCoveredExamplesUnbound;
     private int numberOfCoveredCounters;
     private int numberOfCoveredCountersUnbound;
+
+    private final static int ABSOLUTE_MAX_PATH_LENGTH = 20;
 
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
@@ -54,7 +51,7 @@ public class WeightedRule {
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
         Model localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
-        Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), maxPathLength);
+        Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), ABSOLUTE_MAX_PATH_LENGTH);
         Rule[] rules = createRules(paths, example);
         Rule[] unboundRules = createUnboundRules(paths, example);
 
@@ -69,10 +66,11 @@ public class WeightedRule {
 
     public static Model createLocalGraph(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
         Model localGraph = ModelFactory.createDefaultModel();
+        boolean foundSomething = false;
 
         // For each pathLength less than maxPathLength, create and execute a CONSTRUCT query, that generates a graph
         // that contains every path from the given subject to the given object with that given length.
-        for (int currentPathLength = 1; currentPathLength < maxPathLength; currentPathLength++) {
+        for (int currentPathLength = 1; (currentPathLength <= maxPathLength || !foundSomething) && (currentPathLength <= ABSOLUTE_MAX_PATH_LENGTH); currentPathLength++) {
 
             // Build the CONSTRUCT query.
             ConstructBuilder builder = new ConstructBuilder();
@@ -93,7 +91,12 @@ public class WeightedRule {
 
             // Execute the CONSTRUCT query and add the result to the local graph.
             try (QueryExecution qexec = QueryExecutionFactory.create(builder.build(), baseModel)) {
-                localGraph.add(qexec.execConstruct());
+                final var temp = qexec.execConstruct();
+                foundSomething = !temp.isEmpty();
+                if (currentPathLength >= maxPathLength - 1 && !foundSomething) {
+                    logger.info("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
+                }
+                localGraph.add(temp);
             }
         }
 
@@ -105,7 +108,7 @@ public class WeightedRule {
     public static Statement[][] createPaths(Model localGraph, Resource subject, RDFNode object, int maxPathLength) {
         List<Statement[]> paths = new ArrayList<>();
 
-        for (int currentPathLength = 1; currentPathLength < maxPathLength; currentPathLength++) {
+        for (int currentPathLength = 1; currentPathLength <= maxPathLength; currentPathLength++) {
 
             // Build SELECT query.
             SelectBuilder selectBuilder = new SelectBuilder();
