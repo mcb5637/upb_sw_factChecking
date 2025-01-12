@@ -55,7 +55,7 @@ public class EvidenceTruthScoring {
         if (minPositiveW != 1.0){
             // "If positive evidence for a given statement are found in a knowledge graph, then we use
             //0.0 instead of the weight of the strongest negative rule"
-            truthScore = (1-minPositiveW-2)/2;
+            truthScore = (1-minPositiveW)/2;
         }
         else{
             truthScore = ((1-minPositiveW)-(1-minNegativeW)+1)/2;
