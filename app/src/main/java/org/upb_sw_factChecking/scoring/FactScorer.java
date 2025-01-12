@@ -4,6 +4,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
+import org.upb_sw_factChecking.app.SystemParameters;
 import org.upb_sw_factChecking.dataset.TrainingSet;
 
 import java.io.IOException;
@@ -20,8 +21,11 @@ public class FactScorer {
     private WeightedRule[] positiveRules;
     private WeightedRule[] negativeRules;
 
-    private final static int MAX_PATH_LENGTH = 3;
-    private final static int THREAD_COUNT = 4;
+    private final static int INITIAL_MAX_PATH_LENGTH = SystemParameters.INITIAL_MAX_PATH_LENGTH;
+
+    // Number of threads to use for rule generation.
+    // Something will create additional threads anyway, so shouldn't be set too high.
+    private final static int THREAD_COUNT = SystemParameters.RULE_GEN_THREAD_COUNT;
 
     private final static Logger logger = org.slf4j.LoggerFactory.getLogger(FactScorer.class);
 
@@ -40,7 +44,7 @@ public class FactScorer {
             // Collect all rules and assign the covered examples to them.
             for (var example : trainingSet.getEntries()) {
                 final var future = CompletableFuture.runAsync(() -> {
-                    final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, MAX_PATH_LENGTH);
+                    final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, INITIAL_MAX_PATH_LENGTH);
                     logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
                     for (var rule : ruleArray) {
                         final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
@@ -111,10 +115,22 @@ public class FactScorer {
         WeightedRule.serializeRules(combinedArray, file);
     }
 
-    public void loadRulesFromFile(Path file) throws IOException {
-        final var rules = WeightedRule.loadRules(file);
+    public boolean loadRulesFromFile(Path file) {
+        final WeightedRule[] rules;
+        try {
+            rules = WeightedRule.loadRules(file);
+            if (rules.length == 0) {
+                logger.warn("No rules loaded from file.");
+                return false;
+            }
+        } catch (IOException e) {
+            logger.error("Error reading rules file", e);
+            return false;
+        }
+
         Arrays.sort(rules, Comparator.comparingDouble(rule -> rule.weight));
         positiveRules = Arrays.stream(rules).filter(weightedRule -> weightedRule.isPositive).toArray(WeightedRule[]::new);
         negativeRules = Arrays.stream(rules).filter(weightedRule -> !weightedRule.isPositive).toArray(WeightedRule[]::new);
+        return true;
     }
 }
