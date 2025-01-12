@@ -30,8 +30,12 @@ public class RuleGenerationTest {
         final var localGraph = WeightedRule.createLocalGraph(model, subject, object, 4);
         final var paths = WeightedRule.createPaths(localGraph, subject, object, 4);
 
-        final var rules = WeightedRule.createRules(paths, triple);
-        Arrays.stream(rules).forEach(rule -> logger.info(rule.toShortString()));
+        // final var rules = WeightedRule.createRules(paths, triple);
+
+        // Arrays.stream(rules).forEach(rule -> logger.info(rule.toShortString()));
+
+        final var rules = WeightedRule.generateRules(model, triple, true, 5);
+        logger.info(rules[0].unboundRule.toShortString());
     }
 
     @Test

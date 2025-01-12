@@ -24,6 +24,7 @@ import java.util.List;
 public class WeightedRule {
 
     public Rule rule;
+    public Rule unboundRule;
     public Reasoner reasoner;
     public boolean isPositive;
     public double weight;
@@ -33,10 +34,16 @@ public class WeightedRule {
     private static final double beta = 0.9;
     private static final double gamma = 0.25;
 
+    private int numberOfCoveredExamples;
+    private int numberOfCoveredExamplesUnbound;
+    private int numberOfCoveredCounters;
+    private int numberOfCoveredCountersUnbound;
+
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
-    public WeightedRule(Rule rule, boolean isPositive) {
+    public WeightedRule(Rule rule, Rule unboundRule, boolean isPositive) {
         this.rule = rule;
+        this.unboundRule = unboundRule;
         this.isPositive = isPositive;
         this.weight = 0.0;              // default value
         this.reasoner = new GenericRuleReasoner(List.of(rule));
@@ -46,10 +53,11 @@ public class WeightedRule {
         Model localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
         Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), maxPathLength);
         Rule[] rules = createRules(paths, example);
+        Rule[] unboundRules = createUnboundRules(paths, example);
 
         WeightedRule[] result = new WeightedRule[rules.length];
         for (int i = 0; i < rules.length; i++) {
-            result[i] = new WeightedRule(rules[i], isPositive);
+            result[i] = new WeightedRule(rules[i], unboundRules[i], isPositive);
             result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
         }
 
@@ -156,6 +164,22 @@ public class WeightedRule {
         return rules.toArray(new Rule[0]);
     }
 
+    public static Rule[] createUnboundRules(Statement[][] paths, Statement head) {
+        List<Rule> rules = new ArrayList<>(paths.length);
+        for (final Statement[] path : paths) {
+            // If a path has the length of one and is the same as the head, skip it.
+            if (path.length == 1 && path[0].equals(head)) continue;
+
+            String headString = String.format("(?e0, %s, ?e%d)", head.getPredicate().getURI(), path.length * 2 - 1);
+            String[] bodyStrings = new String[path.length];
+            for (int i = 0; i < path.length; i++) {
+                bodyStrings[i] = String.format("(?e%d, %s, ?e%d)", i * 2, path[i].getPredicate().getURI(), (i * 2) + 1);
+            }
+            rules.add(Rule.parseRule(String.join(", ", bodyStrings) + " -> " + headString + " ."));
+        }
+        return rules.toArray(new Rule[0]);
+    }
+
     public boolean doesRuleApply(Statement s) {
         return inferred.contains(s.asTriple());
     }
@@ -177,6 +201,17 @@ public class WeightedRule {
         return i;
     }
 
+    public void setCounters(int numberOfCoveredExamples, int numberOfCoveredCounters, int numberOfCoveredExamplesUnbound, int numberOfCoveredCountersUnbound) {
+        this.numberOfCoveredExamples = numberOfCoveredExamples;
+        this.numberOfCoveredCounters = numberOfCoveredCounters;
+        this.numberOfCoveredExamplesUnbound = numberOfCoveredExamplesUnbound;
+        this.numberOfCoveredCountersUnbound = numberOfCoveredCountersUnbound;
+    }
+
+    public void setWeight(double weight) {
+        this.weight = weight;
+    }
+
     public static WeightedRule[] loadRules(Path file, Model baseModel) throws IOException {
         WeightedRule[] rules;
         try (var reader = Files.newBufferedReader(file)) {
@@ -185,7 +220,7 @@ public class WeightedRule {
             for (int i = 0; i < ruleCount; i++) {
                 final var line = reader.readLine();
                 final var split = line.split(";");
-                rules[i] = new WeightedRule(Rule.parseRule(split[1]), split[0].trim().equals("positive"));
+                rules[i] = new WeightedRule(Rule.parseRule(split[1]), Rule.parseRule(split[2]), split[0].trim().equals("positive"));
                 rules[i].weight = Double.parseDouble(split[2]);
                 rules[i].inferred = rules[i].reasoner.bind(baseModel.getGraph());
             }
@@ -198,7 +233,11 @@ public class WeightedRule {
             writer.write(rules.length);
             writer.newLine();
             for (WeightedRule rule : rules) {
-                writer.write(String.format("%s; %s; %f", rule.isPositive ? "positive" : "negative", rule.rule.toShortString(), rule.weight));
+                writer.write(String.format("%s; %s; %s; %f",
+                        rule.isPositive ? "positive" : "negative",
+                        rule.rule.toShortString(),
+                        rule.unboundRule.toShortString(),
+                        rule.weight));
                 writer.newLine();
             }
         }
