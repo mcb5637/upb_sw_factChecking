@@ -20,7 +20,7 @@ public class FactScorer {
     private WeightedRule[] positiveRules;
     private WeightedRule[] negativeRules;
 
-    private final static int MAX_PATH_LENGTH = 4;
+    private final static int MAX_PATH_LENGTH = 3;
     private final static int THREAD_COUNT = 4;
 
     private final static Logger logger = org.slf4j.LoggerFactory.getLogger(FactScorer.class);
@@ -36,11 +36,12 @@ public class FactScorer {
 
         try (ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT)) {
             List<CompletableFuture<Void>> futures = new ArrayList<>();
+            AtomicInteger counter = new AtomicInteger();
             // Collect all rules and assign the covered examples to them.
             for (var example : trainingSet.getEntries()) {
                 final var future = CompletableFuture.runAsync(() -> {
                     final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, MAX_PATH_LENGTH);
-                    // logger.info("Generated {} rules for example {}", ruleArray.length, example.statement());
+                    logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
                     for (var rule : ruleArray) {
                         final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
                         final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.unboundRule, r -> Collections.synchronizedSet(new HashSet<>()));
@@ -111,7 +112,7 @@ public class FactScorer {
     }
 
     public void loadRulesFromFile(Path file) throws IOException {
-        final var rules = WeightedRule.loadRules(file, knownFacts);
+        final var rules = WeightedRule.loadRules(file);
         Arrays.sort(rules, Comparator.comparingDouble(rule -> rule.weight));
         positiveRules = Arrays.stream(rules).filter(weightedRule -> weightedRule.isPositive).toArray(WeightedRule[]::new);
         negativeRules = Arrays.stream(rules).filter(weightedRule -> !weightedRule.isPositive).toArray(WeightedRule[]::new);

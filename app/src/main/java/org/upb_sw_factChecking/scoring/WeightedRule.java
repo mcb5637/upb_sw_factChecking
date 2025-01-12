@@ -2,11 +2,12 @@ package org.upb_sw_factChecking.scoring;
 
 import org.apache.jena.arq.querybuilder.ConstructBuilder;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.*;
-import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.Reasoner;
+import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ public class WeightedRule {
     public Reasoner reasoner;
     public boolean isPositive;
     public double weight;
-    public InfGraph inferred;
+    public Graph inferred;
 
     private int numberOfCoveredExamples;
     private int numberOfCoveredExamplesUnbound;
@@ -45,8 +46,8 @@ public class WeightedRule {
         this.rule = rule;
         this.unboundRule = unboundRule;
         this.isPositive = isPositive;
-        this.weight = 0.0;              // default value
-        // this.reasoner = new GenericRuleReasoner(List.of(rule));
+        this.weight = 0.0;
+        this.reasoner = new GenericRuleReasoner(List.of(rule));
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
@@ -58,7 +59,6 @@ public class WeightedRule {
         WeightedRule[] result = new WeightedRule[rules.length];
         for (int i = 0; i < rules.length; i++) {
             result[i] = new WeightedRule(rules[i], unboundRules[i], isPositive);
-            // result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
         }
 
         return result;
@@ -93,8 +93,8 @@ public class WeightedRule {
             try (QueryExecution qexec = QueryExecutionFactory.create(builder.build(), baseModel)) {
                 final var temp = qexec.execConstruct();
                 foundSomething = !temp.isEmpty();
-                if (currentPathLength >= maxPathLength - 1 && !foundSomething) {
-                    logger.info("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
+                if (currentPathLength >= maxPathLength && !foundSomething) {
+                    logger.warn("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
             }
@@ -186,7 +186,10 @@ public class WeightedRule {
         return rules.toArray(new Rule[0]);
     }
 
-    public boolean doesRuleApply(Statement s) {
+    public boolean doesRuleApply(Model baseModel, Statement s) {
+        if (inferred == null) {
+            inferred = reasoner.bind(baseModel.getGraph()).getDeductionsGraph();
+        }
         return inferred.contains(s.asTriple());
     }
 
@@ -217,7 +220,7 @@ public class WeightedRule {
         return numberOfCoveredCountersUnbound;
     }
 
-    public static WeightedRule[] loadRules(Path file, Model baseModel) throws IOException {
+    public static WeightedRule[] loadRules(Path file) throws IOException {
         WeightedRule[] rules;
         try (var reader = Files.newBufferedReader(file)) {
             final var ruleCount = Integer.parseInt(reader.readLine());
@@ -227,7 +230,6 @@ public class WeightedRule {
                 final var split = line.split(";");
                 rules[i] = new WeightedRule(Rule.parseRule(split[1]), Rule.parseRule(split[2]), split[0].trim().equals("positive"));
                 rules[i].weight = Double.parseDouble(split[2]);
-                // rules[i].inferred = rules[i].reasoner.bind(baseModel.getGraph());
             }
         }
         return rules;
@@ -235,7 +237,7 @@ public class WeightedRule {
 
     public static void serializeRules(WeightedRule[] rules, Path file) throws IOException {
         try (var writer = Files.newBufferedWriter(file)) {
-            writer.write(rules.length);
+            writer.write(Integer.toString(rules.length));
             writer.newLine();
             for (WeightedRule rule : rules) {
                 DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
