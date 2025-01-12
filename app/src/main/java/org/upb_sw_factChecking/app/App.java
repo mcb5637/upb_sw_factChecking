@@ -203,7 +203,7 @@ public class App {
             logger.info("Loaded existing rules from file.");
         } else {
             logger.info("Inferring rules.");
-            factChecker.generateAndWeightRules(trainingSet, 0.1, 0.9, 0.25);
+            factChecker.generateAndWeightRules(trainingSet, SystemParameters.ALPHA, SystemParameters.BETA, SystemParameters.GAMMA);
 
             // Save rules
             try {

@@ -11,6 +11,7 @@ import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.upb_sw_factChecking.app.SystemParameters;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,7 +39,7 @@ public class WeightedRule {
     private int numberOfCoveredCounters;
     private int numberOfCoveredCountersUnbound;
 
-    private final static int ABSOLUTE_MAX_PATH_LENGTH = 20;
+    private final static int ABSOLUTE_MAX_PATH_LENGTH = SystemParameters.ABSOLUTE_MAX_PATH_LENGTH;
 
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
