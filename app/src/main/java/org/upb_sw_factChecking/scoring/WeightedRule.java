@@ -212,6 +212,22 @@ public class WeightedRule {
         this.weight = weight;
     }
 
+    public int getNumberOfCoveredExamples() {
+        return numberOfCoveredExamples;
+    }
+
+    public int getNumberOfCoveredExamplesUnbound() {
+        return numberOfCoveredExamplesUnbound;
+    }
+
+    public int getNumberOfCoveredCounters() {
+        return numberOfCoveredCounters;
+    }
+
+    public int getNumberOfCoveredCountersUnbound() {
+        return numberOfCoveredCountersUnbound;
+    }
+
     public static WeightedRule[] loadRules(Path file, Model baseModel) throws IOException {
         WeightedRule[] rules;
         try (var reader = Files.newBufferedReader(file)) {
