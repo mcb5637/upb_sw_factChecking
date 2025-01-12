@@ -7,16 +7,19 @@ import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.Reasoner;
-import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
+import org.apache.jena.sparql.exec.http.QueryExecutionHTTP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Class containing the rule and additional information.
@@ -46,7 +49,7 @@ public class WeightedRule {
         this.unboundRule = unboundRule;
         this.isPositive = isPositive;
         this.weight = 0.0;              // default value
-        this.reasoner = new GenericRuleReasoner(List.of(rule));
+        // this.reasoner = new GenericRuleReasoner(List.of(rule));
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
@@ -58,7 +61,7 @@ public class WeightedRule {
         WeightedRule[] result = new WeightedRule[rules.length];
         for (int i = 0; i < rules.length; i++) {
             result[i] = new WeightedRule(rules[i], unboundRules[i], isPositive);
-            result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
+            // result[i].inferred = result[i].reasoner.bind(baseModel.getGraph());
         }
 
         return result;
@@ -184,23 +187,6 @@ public class WeightedRule {
         return inferred.contains(s.asTriple());
     }
 
-    public void calculateWeight(Model baseModel, Model examples, Model counters) {
-        double ecorr = countNumberOfMatchingExamples(examples);
-        double ecounter = countNumberOfMatchingExamples(counters);
-        double wr = alpha * (1 - (ecorr / examples.size())) + beta * (ecounter / counters.size());
-        weight = 1 - (ecorr - 1/gamma * ecounter) / ecorr * (1 - wr);
-    }
-
-    private int countNumberOfMatchingExamples(Model examples) {
-        int i = 0;
-        for (StmtIterator it = examples.listStatements(); it.hasNext(); ) {
-            Statement s = it.next();
-            if (doesRuleApply(s))
-                ++i;
-        }
-        return i;
-    }
-
     public void setCounters(int numberOfCoveredExamples, int numberOfCoveredCounters, int numberOfCoveredExamplesUnbound, int numberOfCoveredCountersUnbound) {
         this.numberOfCoveredExamples = numberOfCoveredExamples;
         this.numberOfCoveredCounters = numberOfCoveredCounters;
@@ -238,7 +224,7 @@ public class WeightedRule {
                 final var split = line.split(";");
                 rules[i] = new WeightedRule(Rule.parseRule(split[1]), Rule.parseRule(split[2]), split[0].trim().equals("positive"));
                 rules[i].weight = Double.parseDouble(split[2]);
-                rules[i].inferred = rules[i].reasoner.bind(baseModel.getGraph());
+                // rules[i].inferred = rules[i].reasoner.bind(baseModel.getGraph());
             }
         }
         return rules;
@@ -249,13 +235,28 @@ public class WeightedRule {
             writer.write(rules.length);
             writer.newLine();
             for (WeightedRule rule : rules) {
-                writer.write(String.format("%s; %s; %s; %f",
+                DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+                df.setMaximumFractionDigits(20);
+                writer.write(String.format("%s; %s; %s; %s",
                         rule.isPositive ? "positive" : "negative",
                         rule.rule.toShortString(),
                         rule.unboundRule.toShortString(),
-                        rule.weight));
+                        df.format(rule.weight)));
                 writer.newLine();
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        WeightedRule other = (WeightedRule) obj;
+        return rule.equals(other.rule) && isPositive == other.isPositive;
+    }
+
+    @Override
+    public int hashCode() {
+        return rule.hashCode() + (isPositive ? 1 : 0);
     }
 }
