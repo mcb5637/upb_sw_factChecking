@@ -6,7 +6,7 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.RDFS;
 import org.slf4j.Logger;
-import org.upb_sw_factChecking.FactChecker;
+import org.upb_sw_factChecking.scoring.FactScorer;
 import org.upb_sw_factChecking.dataset.Fokgsw2024;
 import org.upb_sw_factChecking.dataset.TestSet;
 import org.upb_sw_factChecking.dataset.TrainingSet;
@@ -93,7 +93,7 @@ public class App {
 
             // Evaluate
             logger.info("Inferring rules.");
-            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
+            final var factChecker = new FactScorer(ontology);
             logger.info("Evaluating system.");
             logger.info("Checking {} facts.", trainingSet.getEntries().size());
             var averageError = 0.0;
@@ -143,21 +143,27 @@ public class App {
 
             // Evaluate
             logger.info("Inferring rules.");
-            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
-            final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
-            for (var entry : testSet.getEntries()) {
-                final double truthValue = factChecker.check(entry.statement());
-                logger.info("Truth value for '{}' is {}",
-                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
-                        truthValue);
-                results.add(entry.toTrainingSetEntry(truthValue));
-            }
+            final var factChecker = new FactScorer(model);
+            factChecker.generateAndWeightRules(Fokgsw2024.getTrainingSet(), 0.1, 0.9, 0.25);
             try {
-                TrainingSet.serializeToResultFile(results, Path.of(options.outputFile));
+                factChecker.saveRulesToFile(Path.of("rules.txt"));
             } catch (IOException e) {
-                logger.error("Error writing result file", e);
                 throw new RuntimeException(e);
             }
+//            final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
+//            for (var entry : testSet.getEntries()) {
+//                final double truthValue = factChecker.check(entry.statement());
+//                logger.info("Truth value for '{}' is {}",
+//                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+//                        truthValue);
+//                results.add(entry.toTrainingSetEntry(truthValue));
+//            }
+//            try {
+//                TrainingSet.serializeToResultFile(results, Path.of(options.outputFile));
+//            } catch (IOException e) {
+//                logger.error("Error writing result file", e);
+//                throw new RuntimeException(e);
+//            }
         }
     }
 
