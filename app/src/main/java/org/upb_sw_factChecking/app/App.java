@@ -144,7 +144,7 @@ public class App {
                     logger.info("Truth value for '{}' is {}",
                             !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
                             truthValue);
-                    logger.info("{} facts remaining.", trainingSet.getEntries().size() - count.incrementAndGet());
+                    logger.info("{} facts remaining.", testSet.getEntries().size() - count.incrementAndGet());
                     results.add(entry.toTrainingSetEntry(truthValue));
                 }
             });
