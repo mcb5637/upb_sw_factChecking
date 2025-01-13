@@ -40,7 +40,7 @@ public class FactScorer {
 
     public void generateAndWeightRules(TrainingSet trainingSet, double alpha, double beta, double gamma) {
         Map<Rule, Set<TrainingSet.TrainingSetEntry>> coverage = Collections.synchronizedMap(new HashMap<>());
-        Map<Rule, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>());
+        Map<String, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>()); // TODO:
         Set<WeightedRule> ruleSet = Collections.synchronizedSet(new HashSet<>());
 
         try (ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT)) {
@@ -53,7 +53,7 @@ public class FactScorer {
                     logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
                     for (var rule : ruleArray) {
                         final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
-                        final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.unboundRule, r -> Collections.synchronizedSet(new HashSet<>()));
+                        final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.rule.getHead()[0].toString().split(" ")[1], r -> Collections.synchronizedSet(new HashSet<>()));
                         exampleList.add(example);
                         exampleListUnbound.add(example);
                         ruleSet.add(rule);
@@ -79,7 +79,7 @@ public class FactScorer {
                 }
             });
 
-            final var examplesUnbound = coverageUnbound.get(rule.unboundRule);
+            final var examplesUnbound = coverageUnbound.get(rule.rule.getHead()[0].toString().split(" ")[1]);
             AtomicInteger unboundCountPositive = new AtomicInteger();
             AtomicInteger unboundCountCounter = new AtomicInteger();
 
