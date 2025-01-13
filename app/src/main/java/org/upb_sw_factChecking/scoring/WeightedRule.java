@@ -230,7 +230,7 @@ public class WeightedRule {
                 final var line = reader.readLine();
                 final var split = line.split(";");
                 rules[i] = new WeightedRule(Rule.parseRule(split[1]), Rule.parseRule(split[2]), split[0].trim().equals("positive"));
-                rules[i].weight = Double.parseDouble(split[2]);
+                rules[i].weight = Double.parseDouble(split[3]);
             }
         }
         return rules;
