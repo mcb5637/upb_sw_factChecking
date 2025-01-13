@@ -114,8 +114,8 @@ public class FactScorer {
     public double scoreStatement(Statement fact) {
         AtomicReference<Double> minPositiveW  = new AtomicReference<>(1.0);
         AtomicReference<Rule> positiveRule = new AtomicReference<>();
-        Arrays.stream(positiveRules).parallel().forEachOrdered(rule -> {
-            if (rule.doesRuleApply(knownFacts, fact)) {
+        Arrays.stream(positiveRules).forEachOrdered(rule -> {
+            if (rule.doesRuleApply(knownFacts, fact) && minPositiveW.get() == 1.0) {
                 if (minPositiveW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
                     positiveRule.set(rule.rule);
                 }
@@ -125,8 +125,8 @@ public class FactScorer {
         AtomicReference<Double> minNegativeW = new AtomicReference<>(1.0); // TODO: idk, seems to make more sense tbh
         AtomicReference<Rule> negativeRule = new AtomicReference<>();
         if (minPositiveW.get() == 1.0) {
-            Arrays.stream(negativeRules).parallel().forEachOrdered(rule -> {
-                if (rule.doesRuleApply(knownFacts, fact)) {
+            Arrays.stream(negativeRules).forEachOrdered(rule -> {
+                if (rule.doesRuleApply(knownFacts, fact) && minNegativeW.get() == 1.0) {
                     if (minNegativeW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
                         negativeRule.set(rule.rule);
                     }
@@ -137,13 +137,19 @@ public class FactScorer {
         // logger.info("Positive rule: {}", positiveRule.get());
         // logger.info("Negative rule: {}", negativeRule.get());
 
-        if (positiveRule.get() != null) {
-            logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact));
-        } else if (negativeRule.get() != null) {
-            logger.info("Negative evidence rule: {}", instantiateRule(negativeRule.get(), fact));
+        synchronized(this) {
+            if (positiveRule.get() != null) {
+                logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact, true));
+                logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact, false));
+            } else if (negativeRule.get() != null) {
+                logger.info("Negative evidence path: {}", instantiateRule(negativeRule.get(), fact, true));
+                logger.info("Negative evidence path: {}", instantiateRule(negativeRule.get(), fact, false));
+            } else {
+                logger.warn("No evidence path found for {}", fact);
+            }
+            return (((1 - minPositiveW.get()) - (1 - minNegativeW.get())) + 1) / 2;
         }
 
-        return (((1 - minPositiveW.get()) - (1 - minNegativeW.get())) + 1) / 2;
     }
 
     public void saveRulesToFile(Path file) throws IOException {
@@ -176,7 +182,7 @@ public class FactScorer {
         return true;
     }
 
-    private String instantiateRule(Rule rule, Statement fact) {
+    private String instantiateRule(Rule rule, Statement fact, boolean labeled) {
         SelectBuilder builder = new SelectBuilder();
         builder.addVar("*");
         if (rule.bodyLength() < 2) {
@@ -193,12 +199,25 @@ public class FactScorer {
         try (var qexec = QueryExecutionFactory.create(builder.build(), knownFacts)) {
             var result = qexec.execSelect().nextSolution();
             for (int i = 1; i < rule.bodyLength(); i++) {
-                final var label = knownFacts.listObjectsOfProperty(result.getResource("?e" + i), RDFS.label).next().asLiteral().getLexicalForm();
-                ruleString = ruleString.replaceAll("\\?e" + i, label);
+                var resourceString = result.getResource("?e" + i).toString();
+                if (labeled) {
+                    final var label = knownFacts.listObjectsOfProperty(result.getResource("?e" + i), RDFS.label).nextOptional();
+                    if (label.isPresent())
+                        resourceString = label.get().asLiteral().getLexicalForm();
+                }
+                ruleString = ruleString.replaceAll("\\?e" + i, resourceString);
             }
-            final var labelSubject = knownFacts.listObjectsOfProperty(fact.getSubject(), RDFS.label).next().asLiteral().getLexicalForm();
-            final var labelObject = knownFacts.listObjectsOfProperty(fact.getObject().asResource(), RDFS.label).next().asLiteral().getLexicalForm(); // assuming the object is always uri
-            ruleString = ruleString.replaceAll("\\?e0", labelSubject).replaceAll("\\?e" + rule.bodyLength(), labelObject);
+            var subjectString = fact.getSubject().toString();
+            var objectString = fact.getObject().toString(); // assuming the object is always uri
+            if (labeled) {
+                final var subjectLabel = knownFacts.listObjectsOfProperty(fact.getSubject(), RDFS.label).nextOptional();
+                final var objectLabel = knownFacts.listObjectsOfProperty(fact.getObject().asResource(), RDFS.label).nextOptional();
+                if (subjectLabel.isPresent())
+                    subjectString = subjectLabel.get().asLiteral().getLexicalForm();
+                if (objectLabel.isPresent())
+                    objectString = objectLabel.get().asLiteral().getLexicalForm();
+            }
+            ruleString = ruleString.replaceAll("\\?e0", subjectString).replaceAll("\\?e" + rule.bodyLength(), objectString);
         }
         return ruleString;
     }

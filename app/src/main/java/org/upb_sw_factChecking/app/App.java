@@ -18,6 +18,7 @@ import picocli.CommandLine.ArgGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -89,16 +90,21 @@ public class App {
 
             logger.info("Evaluating system.");
             logger.info("Checking {} facts.", trainingSet.getEntries().size());
-            var averageError = 0.0;
-            for (var entry : trainingSet.getEntries()) {
+            AtomicReference<Double> averageError = new AtomicReference<>(0.0);
+            AtomicInteger count = new AtomicInteger();
+            trainingSet.getEntries().parallelStream().forEach(entry -> {
                 final double truthValue = factChecker.scoreStatement(entry.statement());
-                final double error = Math.abs(truthValue - entry.truthValue());
-                averageError += error;
-                logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
-                        !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
-                        truthValue, entry.truthValue(), error);
-            }
-            averageError /= trainingSet.getEntries().size();
+                synchronized (factChecker) {
+                    final double error = Math.abs(truthValue - entry.truthValue());
+                    averageError.updateAndGet(v -> v + error);
+                    logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
+                            !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                            truthValue, entry.truthValue(), error);
+                    logger.info("{} facts remaining.", trainingSet.getEntries().size() - count.incrementAndGet());
+                }
+            });
+
+            averageError.updateAndGet(v -> v / trainingSet.getEntries().size());
             logger.info("Average error: {}", averageError);
         }
     }
