@@ -9,9 +9,9 @@ public class SystemParameters {
     // Local graph generation will start with this path length. If no path has been found,
     // the path length will be increased by one until the absolute maximum path length is reached.
     public static final int INITIAL_MAX_PATH_LENGTH = 3;
-    public static final int ABSOLUTE_MAX_PATH_LENGTH = 10;
+    public static final int ABSOLUTE_MAX_PATH_LENGTH = 5;
 
     // Number of threads to use for rule generation.
     // Something will create additional threads anyway, so shouldn't be set too high.
-    public static final int RULE_GEN_THREAD_COUNT = Runtime.getRuntime().availableProcessors() / 4;
+    public static final int RULE_GEN_THREAD_COUNT = Runtime.getRuntime().availableProcessors() / 2;
 }
