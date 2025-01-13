@@ -106,7 +106,7 @@ public class WeightedRule {
                     initialMaxPathLength = currentPathLength;
                 }
                 if (currentPathLength >= initialMaxPathLength && !foundSomething && currentPathLength < absoluteMaxPathLength) {
-                    logger.warn("Path length of {} reached, but no path found. Extending to {}.", initialMaxPathLength, currentPathLength + 1);
+                    // logger.warn("Path length of {} reached, but no path found. Extending to {}.", initialMaxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
             }
@@ -201,6 +201,11 @@ public class WeightedRule {
 
     public boolean doesRuleApply(Model baseModel, Statement s) {
         if (inferred == null) {
+            if (!s.getPredicate().getURI().equals(this.rule.getHead()[0].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/"))) {
+                // In this case rule doesn't apply at all.
+                return false;
+            }
+
             final var modifiedRule = Rule.parseRule(rule.toString()
                     .replaceAll("\\?e0", s.getSubject().getURI())
                     .replaceAll("\\?e" + rule.bodyLength(), s.getObject().isResource() ? s.getObject().asResource().getURI() : s.getObject().asLiteral().getLexicalForm()));
