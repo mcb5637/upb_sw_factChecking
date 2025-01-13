@@ -52,7 +52,7 @@ public class WeightedRule {
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
-        LocalGraph localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
+        LocalGraph localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength, ABSOLUTE_MAX_PATH_LENGTH);
         Statement[][] paths = createPaths(localGraph.graph, example.getSubject(), example.getObject(), localGraph.maxPathLength);
         Rule[] rules = createRules(paths, example);
         Rule[] unboundRules = createUnboundRules(paths, example);
@@ -65,14 +65,14 @@ public class WeightedRule {
         return result;
     }
 
-    public static LocalGraph createLocalGraph(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
+    public static LocalGraph createLocalGraph(Model baseModel, Resource subject, RDFNode object, int initialMaxPathLength, int absoluteMaxPathLength) {
         // Create local graph first.
         Model localGraph = ModelFactory.createDefaultModel();
         boolean foundSomething = false;
 
         // For each pathLength less than maxPathLength, create and execute a CONSTRUCT query, that generates a graph
         // that contains every path from the given subject to the given object with that given length.
-        for (int currentPathLength = 1; (currentPathLength <= maxPathLength || !foundSomething) && (currentPathLength <= ABSOLUTE_MAX_PATH_LENGTH); currentPathLength++) {
+        for (int currentPathLength = 1; (currentPathLength <= initialMaxPathLength || !foundSomething) && (currentPathLength <= absoluteMaxPathLength); currentPathLength++) {
 
             // Build the CONSTRUCT query.
             ConstructBuilder builder = new ConstructBuilder();
@@ -98,11 +98,11 @@ public class WeightedRule {
 
                 // If the path length is greater than the maximum path length and something has been found, update the
                 // maximum path length.
-                if (currentPathLength > maxPathLength && foundSomething) {
-                    maxPathLength = currentPathLength;
+                if (currentPathLength > initialMaxPathLength && foundSomething) {
+                    initialMaxPathLength = currentPathLength;
                 }
-                if (currentPathLength >= maxPathLength && !foundSomething && currentPathLength < ABSOLUTE_MAX_PATH_LENGTH) {
-                    logger.warn("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
+                if (currentPathLength >= initialMaxPathLength && !foundSomething && currentPathLength < absoluteMaxPathLength) {
+                    logger.warn("Path length of {} reached, but no path found. Extending to {}.", initialMaxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
             }
@@ -110,7 +110,7 @@ public class WeightedRule {
 
         // TODO: add unequal predicates
 
-        return new LocalGraph(localGraph, maxPathLength);
+        return new LocalGraph(localGraph, initialMaxPathLength);
     }
 
     public static Statement[][] createPaths(Model localGraph, Resource subject, RDFNode object, int maxPathLength) {
@@ -201,7 +201,7 @@ public class WeightedRule {
             reasoner.setMode(GenericRuleReasoner.FORWARD);
             reasoner.setOWLTranslation(false);
             reasoner.setTransitiveClosureCaching(false);
-            final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength());
+            final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength(), this.rule.bodyLength());
             inferred = reasoner.bind(localGraph.graph.getGraph());
         }
         return inferred.contains(s.asTriple());
