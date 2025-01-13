@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -75,6 +77,7 @@ public class WeightedRule {
         // For each pathLength less than maxPathLength, create and execute a CONSTRUCT query, that generates a graph
         // that contains every path from the given subject to the given object with that given length.
         for (int currentPathLength = 1; (currentPathLength <= initialMaxPathLength || !foundSomething) && (currentPathLength <= absoluteMaxPathLength); currentPathLength++) {
+            Long startTime = System.nanoTime();
 
             // Build the CONSTRUCT query.
             ConstructBuilder builder = new ConstructBuilder();
@@ -96,6 +99,9 @@ public class WeightedRule {
             // Execute the CONSTRUCT query and add the result to the local graph.
             try (QueryExecution qexec = QueryExecutionFactory.create(builder.build(), baseModel)) {
                 final var temp = qexec.execConstruct();
+
+                Long endTime = System.nanoTime();
+
                 foundSomething = !temp.isEmpty();
 
                 // If the path length is greater than the maximum path length and something has been found, update the
@@ -104,6 +110,10 @@ public class WeightedRule {
                     initialMaxPathLength = currentPathLength;
                 }
                 if (currentPathLength >= initialMaxPathLength && !foundSomething && currentPathLength < absoluteMaxPathLength) {
+                    Duration duration = Duration.of((endTime - startTime) / 1000000, ChronoUnit.MILLIS);
+                    if (duration.compareTo(SystemParameters.PATH_TIMEOUT) < 0) {
+                        absoluteMaxPathLength++;
+                    }
                     // logger.warn("Path length of {} reached, but no path found. Extending to {}.", initialMaxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
