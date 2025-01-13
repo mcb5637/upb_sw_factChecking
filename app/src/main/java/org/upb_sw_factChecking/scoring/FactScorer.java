@@ -197,7 +197,10 @@ public class FactScorer {
 
         var ruleString = rule.toShortString();
         try (var qexec = QueryExecutionFactory.create(builder.build(), knownFacts)) {
-            var result = qexec.execSelect().nextSolution();
+            final var execution = qexec.execSelect();
+            if (!execution.hasNext())
+                return ruleString;
+            final var result = execution.next();
             for (int i = 1; i < rule.bodyLength(); i++) {
                 var resourceString = result.getResource("?e" + i).toString();
                 if (labeled) {
@@ -220,5 +223,9 @@ public class FactScorer {
             ruleString = ruleString.replaceAll("\\?e0", subjectString).replaceAll("\\?e" + rule.bodyLength(), objectString);
         }
         return ruleString;
+    }
+
+    public void reweightRules(TrainingSet trainingSet, double alpha, double beta, double gamma) {
+        // TODO:
     }
 }
