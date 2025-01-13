@@ -62,6 +62,10 @@ public class WeightedRule {
             result[i] = new WeightedRule(rules[i], unboundRules[i], isPositive);
         }
 
+        if (rules.length == 0) {
+            logger.warn("No rules generated for example {}.", example);
+        }
+
         return result;
     }
 
@@ -201,8 +205,8 @@ public class WeightedRule {
             reasoner.setMode(GenericRuleReasoner.FORWARD);
             reasoner.setOWLTranslation(false);
             reasoner.setTransitiveClosureCaching(false);
-            final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength(), this.rule.bodyLength());
-            inferred = reasoner.bind(localGraph.graph.getGraph());
+            // final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength(), this.rule.bodyLength());
+            inferred = reasoner.bind(baseModel.getGraph());
         }
         return inferred.contains(s.asTriple());
     }
