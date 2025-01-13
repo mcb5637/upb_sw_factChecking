@@ -101,7 +101,7 @@ public class WeightedRule {
                 if (currentPathLength > maxPathLength && foundSomething) {
                     maxPathLength = currentPathLength;
                 }
-                if (currentPathLength >= maxPathLength && !foundSomething) {
+                if (currentPathLength >= maxPathLength && !foundSomething && currentPathLength < ABSOLUTE_MAX_PATH_LENGTH) {
                     logger.warn("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
