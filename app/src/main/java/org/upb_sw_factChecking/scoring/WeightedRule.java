@@ -201,12 +201,15 @@ public class WeightedRule {
 
     public boolean doesRuleApply(Model baseModel, Statement s) {
         if (inferred == null) {
-            final var reasoner = new GenericRuleReasoner(List.of(rule));
+            final var modifiedRule = Rule.parseRule(rule.toString()
+                    .replaceAll("\\?e0", s.getSubject().getURI())
+                    .replaceAll("\\?e" + rule.bodyLength(), s.getObject().isResource() ? s.getObject().asResource().getURI() : s.getObject().asLiteral().getLexicalForm()));
+            final var reasoner = new GenericRuleReasoner(List.of(modifiedRule));
             reasoner.setMode(GenericRuleReasoner.FORWARD);
             reasoner.setOWLTranslation(false);
             reasoner.setTransitiveClosureCaching(false);
             // final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength(), this.rule.bodyLength());
-            inferred = reasoner.bind(baseModel.getGraph());
+            return reasoner.bind(baseModel.getGraph()).contains(s.asTriple());
         }
         return inferred.contains(s.asTriple());
     }
