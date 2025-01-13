@@ -136,13 +136,13 @@ public class App {
             final var factChecker = loadFactScorer(model, trainingSet, options.rulesFile);
 
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
-            for (var entry : testSet.getEntries()) {
+            testSet.getEntries().parallelStream().forEach(entry -> {
                 final double truthValue = factChecker.scoreStatement(entry.statement());
                 logger.info("Truth value for '{}' is {}",
                         !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
                         truthValue);
                 results.add(entry.toTrainingSetEntry(truthValue));
-            }
+            });
             try {
                 TrainingSet.serializeToResultFile(results, Path.of(options.outputFile));
             } catch (IOException e) {
