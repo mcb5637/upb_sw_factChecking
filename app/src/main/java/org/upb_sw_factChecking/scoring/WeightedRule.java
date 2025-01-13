@@ -49,8 +49,7 @@ public class WeightedRule {
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
-        Model localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
-        Statement[][] paths = createPaths(localGraph, example.getSubject(), example.getObject(), ABSOLUTE_MAX_PATH_LENGTH);
+        Statement[][] paths = createPaths(baseModel, example.getSubject(), example.getObject(), maxPathLength);
         Rule[] rules = createRules(paths, example);
         Rule[] unboundRules = createUnboundRules(paths, example);
 
@@ -62,7 +61,8 @@ public class WeightedRule {
         return result;
     }
 
-    public static Model createLocalGraph(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
+    public static Statement[][] createPaths(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
+        // Create local graph first.
         Model localGraph = ModelFactory.createDefaultModel();
         boolean foundSomething = false;
 
@@ -91,6 +91,12 @@ public class WeightedRule {
             try (QueryExecution qexec = QueryExecutionFactory.create(builder.build(), baseModel)) {
                 final var temp = qexec.execConstruct();
                 foundSomething = !temp.isEmpty();
+
+                // If the path length is greater than the maximum path length and something has been found, update the
+                // maximum path length.
+                if (currentPathLength > maxPathLength && foundSomething) {
+                    maxPathLength = currentPathLength;
+                } else
                 if (currentPathLength >= maxPathLength && !foundSomething) {
                     logger.warn("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
                 }
@@ -100,10 +106,7 @@ public class WeightedRule {
 
         // TODO: add unequal predicates
 
-        return localGraph;
-    }
-
-    public static Statement[][] createPaths(Model localGraph, Resource subject, RDFNode object, int maxPathLength) {
+        // Create paths.
         List<Statement[]> paths = new ArrayList<>();
 
         for (int currentPathLength = 1; currentPathLength <= maxPathLength; currentPathLength++) {

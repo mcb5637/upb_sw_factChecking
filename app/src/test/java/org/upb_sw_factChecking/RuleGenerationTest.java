@@ -27,8 +27,7 @@ public class RuleGenerationTest {
         final var triple = ResourceFactory.createStatement(subject, predicate, object);
 
 
-        final var localGraph = WeightedRule.createLocalGraph(model, subject, object, 4);
-        final var paths = WeightedRule.createPaths(localGraph, subject, object, 4);
+        final var paths = WeightedRule.createPaths(model, subject, object, 4);
 
         // final var rules = WeightedRule.createRules(paths, triple);
 
