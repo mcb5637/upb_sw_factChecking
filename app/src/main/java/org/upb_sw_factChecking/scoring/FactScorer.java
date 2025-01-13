@@ -1,8 +1,12 @@
 package org.upb_sw_factChecking.scoring;
 
+import org.apache.jena.arq.querybuilder.SelectBuilder;
+import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.reasoner.rulesys.Rule;
+import org.apache.jena.vocabulary.RDFS;
 import org.slf4j.Logger;
 import org.upb_sw_factChecking.app.SystemParameters;
 import org.upb_sw_factChecking.dataset.TrainingSet;
@@ -14,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class FactScorer {
 
@@ -107,25 +112,38 @@ public class FactScorer {
     }
 
     public double scoreStatement(Statement fact) {
-        double minPositiveW  = 1.0;
-        for (var rule : positiveRules) {
+        AtomicReference<Double> minPositiveW  = new AtomicReference<>(1.0);
+        AtomicReference<Rule> positiveRule = new AtomicReference<>();
+        Arrays.stream(positiveRules).parallel().forEachOrdered(rule -> {
             if (rule.doesRuleApply(knownFacts, fact)) {
-                minPositiveW = rule.weight;
-                break;
-            }
-        }
-
-        double minNegativeW = 1.0; // TODO: idk, seems to make more sense tbh
-        if (minPositiveW == 1.0) {
-            for (var rule : negativeRules) {
-                if (rule.doesRuleApply(knownFacts, fact)) {
-                    minNegativeW = rule.weight;
-                    break;
+                if (minPositiveW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
+                    positiveRule.set(rule.rule);
                 }
             }
+        });
+
+        AtomicReference<Double> minNegativeW = new AtomicReference<>(1.0); // TODO: idk, seems to make more sense tbh
+        AtomicReference<Rule> negativeRule = new AtomicReference<>();
+        if (minPositiveW.get() == 1.0) {
+            Arrays.stream(negativeRules).parallel().forEachOrdered(rule -> {
+                if (rule.doesRuleApply(knownFacts, fact)) {
+                    if (minNegativeW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
+                        negativeRule.set(rule.rule);
+                    }
+                }
+            });
         }
 
-        return (((1 - minPositiveW) - (1 - minNegativeW)) + 1) / 2;
+        // logger.info("Positive rule: {}", positiveRule.get());
+        // logger.info("Negative rule: {}", negativeRule.get());
+
+        if (positiveRule.get() != null) {
+            logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact));
+        } else if (negativeRule.get() != null) {
+            logger.info("Negative evidence rule: {}", instantiateRule(negativeRule.get(), fact));
+        }
+
+        return (((1 - minPositiveW.get()) - (1 - minNegativeW.get())) + 1) / 2;
     }
 
     public void saveRulesToFile(Path file) throws IOException {
@@ -156,5 +174,32 @@ public class FactScorer {
         positiveRules = Arrays.stream(rules).filter(weightedRule -> weightedRule.isPositive).toArray(WeightedRule[]::new);
         negativeRules = Arrays.stream(rules).filter(weightedRule -> !weightedRule.isPositive).toArray(WeightedRule[]::new);
         return true;
+    }
+
+    private String instantiateRule(Rule rule, Statement fact) {
+        SelectBuilder builder = new SelectBuilder();
+        builder.addVar("*");
+        if (rule.bodyLength() < 2) {
+            return rule.toShortString();
+        }
+
+        builder.addWhere(fact.getSubject(), ResourceFactory.createProperty(rule.getBody()[0].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/")), "?e1");
+        for (int i = 1; i < rule.bodyLength() - 1; i++) {
+            builder.addWhere("?e" + i, ResourceFactory.createProperty(rule.getBody()[i].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/")), "?e" + (i + 1));
+        }
+        builder.addWhere("?e" + (rule.bodyLength() - 1), ResourceFactory.createProperty(rule.getBody()[rule.bodyLength() - 1].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/")), fact.getObject().isResource() ? fact.getObject().asResource() : fact.getObject().asLiteral());
+
+        var ruleString = rule.toShortString();
+        try (var qexec = QueryExecutionFactory.create(builder.build(), knownFacts)) {
+            var result = qexec.execSelect().nextSolution();
+            for (int i = 1; i < rule.bodyLength(); i++) {
+                final var label = knownFacts.listObjectsOfProperty(result.getResource("?e" + i), RDFS.label).next().asLiteral().getLexicalForm();
+                ruleString = ruleString.replaceAll("\\?e" + i, label);
+            }
+            final var labelSubject = knownFacts.listObjectsOfProperty(fact.getSubject(), RDFS.label).next().asLiteral().getLexicalForm();
+            final var labelObject = knownFacts.listObjectsOfProperty(fact.getObject().asResource(), RDFS.label).next().asLiteral().getLexicalForm(); // assuming the object is always uri
+            ruleString = ruleString.replaceAll("\\?e0", labelSubject).replaceAll("\\?e" + rule.bodyLength(), labelObject);
+        }
+        return ruleString;
     }
 }
