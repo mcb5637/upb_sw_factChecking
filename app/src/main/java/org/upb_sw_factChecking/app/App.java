@@ -1,6 +1,5 @@
 package org.upb_sw_factChecking.app;
 
-import ch.qos.logback.classic.Level;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.RDFDataMgr;
