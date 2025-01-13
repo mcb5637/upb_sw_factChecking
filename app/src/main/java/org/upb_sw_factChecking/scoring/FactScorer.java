@@ -115,7 +115,7 @@ public class FactScorer {
             }
         }
 
-        double minNegativeW = 0.0;
+        double minNegativeW = 1.0; // TODO: idk, seems to make more sense tbh
         if (minPositiveW == 1.0) {
             for (var rule : negativeRules) {
                 if (rule.doesRuleApply(knownFacts, fact)) {
