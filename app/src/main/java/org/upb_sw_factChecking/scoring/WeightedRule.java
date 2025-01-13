@@ -2,10 +2,10 @@ package org.upb_sw_factChecking.scoring;
 
 import org.apache.jena.arq.querybuilder.ConstructBuilder;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
-import org.apache.jena.graph.Graph;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.reasoner.InfGraph;
 import org.apache.jena.reasoner.rulesys.GenericRuleReasoner;
 import org.apache.jena.reasoner.rulesys.Rule;
 import org.slf4j.Logger;
@@ -26,11 +26,14 @@ import java.util.Locale;
  */
 public class WeightedRule {
 
+    // Class to store result of local graph generation.
+    public record LocalGraph(Model graph, int maxPathLength) {}
+
     public Rule rule;
     public Rule unboundRule;
     public boolean isPositive;
     public double weight;
-    public Graph inferred;
+    public InfGraph inferred;
 
     private int numberOfCoveredExamples;
     private int numberOfCoveredExamplesUnbound;
@@ -49,7 +52,8 @@ public class WeightedRule {
     }
 
     public static WeightedRule[] generateRules(Model baseModel, Statement example, boolean isPositive, int maxPathLength) {
-        Statement[][] paths = createPaths(baseModel, example.getSubject(), example.getObject(), maxPathLength);
+        LocalGraph localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength);
+        Statement[][] paths = createPaths(localGraph.graph, example.getSubject(), example.getObject(), localGraph.maxPathLength);
         Rule[] rules = createRules(paths, example);
         Rule[] unboundRules = createUnboundRules(paths, example);
 
@@ -61,7 +65,7 @@ public class WeightedRule {
         return result;
     }
 
-    public static Statement[][] createPaths(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
+    public static LocalGraph createLocalGraph(Model baseModel, Resource subject, RDFNode object, int maxPathLength) {
         // Create local graph first.
         Model localGraph = ModelFactory.createDefaultModel();
         boolean foundSomething = false;
@@ -96,7 +100,7 @@ public class WeightedRule {
                 // maximum path length.
                 if (currentPathLength > maxPathLength && foundSomething) {
                     maxPathLength = currentPathLength;
-                } else
+                }
                 if (currentPathLength >= maxPathLength && !foundSomething) {
                     logger.warn("Path length of {} reached, but no path found. Extending to {}.", maxPathLength, currentPathLength + 1);
                 }
@@ -106,6 +110,10 @@ public class WeightedRule {
 
         // TODO: add unequal predicates
 
+        return new LocalGraph(localGraph, maxPathLength);
+    }
+
+    public static Statement[][] createPaths(Model localGraph, Resource subject, RDFNode object, int maxPathLength) {
         // Create paths.
         List<Statement[]> paths = new ArrayList<>();
 
@@ -189,7 +197,12 @@ public class WeightedRule {
 
     public boolean doesRuleApply(Model baseModel, Statement s) {
         if (inferred == null) {
-            inferred = new GenericRuleReasoner(List.of(rule)).bind(baseModel.getGraph()).getDeductionsGraph();
+            final var reasoner = new GenericRuleReasoner(List.of(rule));
+            reasoner.setMode(GenericRuleReasoner.FORWARD);
+            reasoner.setOWLTranslation(false);
+            reasoner.setTransitiveClosureCaching(false);
+            final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength());
+            inferred = reasoner.bind(localGraph.graph.getGraph());
         }
         return inferred.contains(s.asTriple());
     }
