@@ -92,7 +92,7 @@ public class App {
             logger.info("Checking {} facts.", trainingSet.getEntries().size());
             var averageError = 0.0;
             for (var entry : trainingSet.getEntries()) {
-                final double truthValue = factChecker.check(entry.statement());
+                final double truthValue = factChecker.scoreStatement(entry.statement());
                 final double error = Math.abs(truthValue - entry.truthValue());
                 averageError += error;
                 logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
@@ -132,7 +132,7 @@ public class App {
 
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
             for (var entry : testSet.getEntries()) {
-                final double truthValue = factChecker.check(entry.statement());
+                final double truthValue = factChecker.scoreStatement(entry.statement());
                 logger.info("Truth value for '{}' is {}",
                         !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
                         truthValue);

@@ -106,7 +106,27 @@ public class FactScorer {
         negativeRules = ruleSet.stream().sorted(Comparator.comparingDouble(rule -> rule.weight)).filter(weightedRule -> !weightedRule.isPositive).toArray(WeightedRule[]::new);
     }
 
-    public double check(Statement fact) { return 0.0 ; }
+    public double scoreStatement(Statement fact) {
+        double minPositiveW  = 1.0;
+        for (var rule : positiveRules) {
+            if (rule.doesRuleApply(knownFacts, fact)) {
+                minPositiveW = rule.weight;
+                break;
+            }
+        }
+
+        double minNegativeW = 0.0;
+        if (minPositiveW == 1.0) {
+            for (var rule : negativeRules) {
+                if (rule.doesRuleApply(knownFacts, fact)) {
+                    minNegativeW = rule.weight;
+                    break;
+                }
+            }
+        }
+
+        return (((1 - minPositiveW) - (1 - minNegativeW)) + 1) / 2;
+    }
 
     public void saveRulesToFile(Path file) throws IOException {
         final var combinedArray = new WeightedRule[positiveRules.length + negativeRules.length];
@@ -116,6 +136,10 @@ public class FactScorer {
     }
 
     public boolean loadRulesFromFile(Path file) {
+        if (!file.toFile().exists()) {
+            return false;
+        }
+
         final WeightedRule[] rules;
         try {
             rules = WeightedRule.loadRules(file);
