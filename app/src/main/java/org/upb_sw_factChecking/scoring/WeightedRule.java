@@ -109,11 +109,11 @@ public class WeightedRule {
                 if (currentPathLength > initialMaxPathLength && foundSomething) {
                     initialMaxPathLength = currentPathLength;
                 }
+                Duration duration = Duration.of((endTime - startTime) / 1000000, ChronoUnit.MILLIS);
+                if (duration.compareTo(SystemParameters.PATH_TIMEOUT) < 0 && currentPathLength == absoluteMaxPathLength) {
+                    absoluteMaxPathLength++;
+                }
                 if (currentPathLength >= initialMaxPathLength && !foundSomething && currentPathLength < absoluteMaxPathLength) {
-                    Duration duration = Duration.of((endTime - startTime) / 1000000, ChronoUnit.MILLIS);
-                    if (duration.compareTo(SystemParameters.PATH_TIMEOUT) < 0) {
-                        absoluteMaxPathLength++;
-                    }
                     // logger.warn("Path length of {} reached, but no path found. Extending to {}.", initialMaxPathLength, currentPathLength + 1);
                 }
                 localGraph.add(temp);
