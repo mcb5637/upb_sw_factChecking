@@ -110,7 +110,7 @@ public class WeightedRule {
                     initialMaxPathLength = currentPathLength;
                 }
                 Duration duration = Duration.of((endTime - startTime) / 1000000, ChronoUnit.MILLIS);
-                if (duration.compareTo(SystemParameters.PATH_TIMEOUT) < 0 && currentPathLength == absoluteMaxPathLength) {
+                if (duration.compareTo(SystemParameters.PATH_TIMEOUT) < 0 && currentPathLength == absoluteMaxPathLength && absoluteMaxPathLength < 100) {
                     absoluteMaxPathLength++;
                 }
                 if (currentPathLength >= initialMaxPathLength && !foundSomething && currentPathLength < absoluteMaxPathLength) {
