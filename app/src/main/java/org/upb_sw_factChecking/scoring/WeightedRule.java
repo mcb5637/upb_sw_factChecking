@@ -33,7 +33,6 @@ public class WeightedRule {
     public Rule unboundRule;
     public boolean isPositive;
     public double weight;
-    public InfGraph inferred;
 
     private int numberOfCoveredExamples;
     private int numberOfCoveredExamplesUnbound;
@@ -200,23 +199,19 @@ public class WeightedRule {
     }
 
     public boolean doesRuleApply(Model baseModel, Statement s) {
-        if (inferred == null) {
-            if (!s.getPredicate().getURI().equals(this.rule.getHead()[0].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/"))) {
-                // In this case rule doesn't apply at all.
-                return false;
-            }
-
-            final var modifiedRule = Rule.parseRule(rule.toString()
-                    .replaceAll("\\?e0", s.getSubject().getURI())
-                    .replaceAll("\\?e" + rule.bodyLength(), s.getObject().isResource() ? s.getObject().asResource().getURI() : s.getObject().asLiteral().getLexicalForm()));
-            final var reasoner = new GenericRuleReasoner(List.of(modifiedRule));
-            reasoner.setMode(GenericRuleReasoner.FORWARD);
-            reasoner.setOWLTranslation(false);
-            reasoner.setTransitiveClosureCaching(false);
-            // final var localGraph = createLocalGraph(baseModel, s.getSubject(), s.getObject(), this.rule.bodyLength(), this.rule.bodyLength());
-            return reasoner.bind(baseModel.getGraph()).contains(s.asTriple());
+        if (!s.getPredicate().getURI().equals(this.rule.getHead()[0].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/"))) {
+            // In this case rule doesn't apply at all.
+            return false;
         }
-        return inferred.contains(s.asTriple());
+
+        final var modifiedRule = Rule.parseRule(rule.toString()
+                .replaceAll("\\?e0", s.getSubject().getURI())
+                .replaceAll("\\?e" + rule.bodyLength(), s.getObject().isResource() ? s.getObject().asResource().getURI() : s.getObject().asLiteral().getLexicalForm()));
+        final var reasoner = new GenericRuleReasoner(List.of(modifiedRule));
+        reasoner.setMode(GenericRuleReasoner.FORWARD);
+        reasoner.setOWLTranslation(false);
+        reasoner.setTransitiveClosureCaching(false);
+        return reasoner.bind(baseModel.getGraph()).contains(s.asTriple());
     }
 
     public void setCounters(int numberOfCoveredExamples, int numberOfCoveredCounters, int numberOfCoveredExamplesUnbound, int numberOfCoveredCountersUnbound) {
