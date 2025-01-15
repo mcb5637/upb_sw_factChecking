@@ -13,14 +13,6 @@ public class SystemParameters {
     public static final int INITIAL_MAX_PATH_LENGTH = 3;
     public static final int ABSOLUTE_MAX_PATH_LENGTH = 6;
 
-    public static final int NEGATIVE_MAX_PATH_COUNT = 5;
-
     // If path search takes less than this and no path has been found, increase path length.
     public static final Duration PATH_TIMEOUT = Duration.ofSeconds(1);
-
-
-
-    // Number of threads to use for rule generation.
-    // Something will create additional threads anyway, so shouldn't be set too high.
-    public static final int RULE_GEN_THREAD_COUNT = Runtime.getRuntime().availableProcessors() - 1;
 }
