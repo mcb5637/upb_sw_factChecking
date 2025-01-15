@@ -267,7 +267,7 @@ public class WeightedRule {
                 .replaceAll("\\?e0", s.getSubject().getURI())
                 .replaceAll("\\?e" + rule.bodyLength(), s.getObject().isResource() ? s.getObject().asResource().getURI() : s.getObject().asLiteral().getLexicalForm()));
         final var reasoner = new GenericRuleReasoner(List.of(modifiedRule));
-        reasoner.setMode(GenericRuleReasoner.FORWARD);
+        reasoner.setMode(GenericRuleReasoner.FORWARD_RETE);
         reasoner.setOWLTranslation(false);
         reasoner.setTransitiveClosureCaching(false);
         return reasoner.bind(baseModel.getGraph()).contains(s.asTriple());
