@@ -39,6 +39,8 @@ To check a triple, we calculate a veracity value for it, the same way as present
 To do this, first we check all positive and negative rules and use the highest weight of any applying rule in both categories for further calculations.
 From these positive and negative weights we calculate a final veracity value with the same formula as presented in the paper.
 
+In difference to the paper, we initialize the negative weight to 1.0, to prevent triples that have positive evidence from having a veracity value only in [0, 0.5].
+
 ## Build requirements
 
 Installed java and gradle. Other requirements are managed by gradle.
