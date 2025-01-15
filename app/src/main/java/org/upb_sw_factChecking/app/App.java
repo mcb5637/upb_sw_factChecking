@@ -1,12 +1,11 @@
 package org.upb_sw_factChecking.app;
 
-import ch.qos.logback.classic.Level;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.RDFS;
 import org.slf4j.Logger;
-import org.upb_sw_factChecking.FactChecker;
+import org.upb_sw_factChecking.scoring.FactScorer;
 import org.upb_sw_factChecking.dataset.Fokgsw2024;
 import org.upb_sw_factChecking.dataset.TestSet;
 import org.upb_sw_factChecking.dataset.TrainingSet;
@@ -19,6 +18,7 @@ import picocli.CommandLine.ArgGroup;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -29,16 +29,22 @@ public class App {
 
     static class CommandLineOptions {
 
-        @ArgGroup(exclusive = true, multiplicity = "1", heading = "Test data options:%n")
+        @ArgGroup(exclusive = true, multiplicity = "1", heading = "Test data options%n")
         public TestDataOption testData;
 
         @ArgGroup(exclusive = true, multiplicity = "1", heading = "Data source options%n")
         public DatabaseOption database;
 
-        @Option(names = {"-owl", "--owl-file"}, description = "OWL file", required = true, paramLabel = "<FILE>")
-        public String owlFile;
+        @Option(names = {"-T", "--training-file"}, description = "Path to training data", paramLabel = "<FILE>")
+        public String trainingFile;
 
-        @Option(names = {"-o", "--output-file"}, description = "Output file", paramLabel = "<FILE>")
+//        @Option(names = {"-owl", "--owl-file"}, description = "OWL file", required = true, paramLabel = "<FILE>")
+//        public String owlFile;
+
+        @Option(names = {"-r", "--rules-file"}, description = "Rules file. Rules will be saved after generating and reused.", paramLabel = "<FILE>", defaultValue = "rules.txt")
+        public String rulesFile;
+
+        @Option(names = {"-o", "--output-file"}, description = "Output file", paramLabel = "<FILE>", defaultValue = "result.ttl")
         public String outputFile = "result.ttl";
 
         static class TestDataOption {
@@ -55,8 +61,8 @@ public class App {
             String dumpFile;
         }
 
-        @Option(names = {"--display-labels"}, description = "Display labels instead of URIs", defaultValue = "true")
-        boolean displayLabels;
+        @Option(names = {"--no-labels"}, description = "Don't display labels instead of URIs", defaultValue = "false")
+        boolean dontDisplayLabels;
     }
 
     @Command(
@@ -73,39 +79,32 @@ public class App {
         @Override
         public void run() {
             // Load the training set
-            logger.info("Loading training set.");
-            TrainingSet trainingSet;
-            if (options.testData.useDefaultData) {
-                trainingSet = Fokgsw2024.getTrainingSet();
-            } else {
-                try {
-                    trainingSet = new TrainingSet(Path.of(options.testData.test));
-                } catch (IOException e) {
-                    logger.error("Error reading training set file", e);
-                    throw new RuntimeException(e);
-                }
-            }
+            TrainingSet trainingSet = loadTrainingSet(options.trainingFile, options.testData.useDefaultData);
 
-            // Load database + ontology
-            logger.info("Loading database and ontology.");
+            // Load database
+            logger.info("Loading database.");
             Model model = RDFDataMgr.loadModel(options.database.dumpFile);
-            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
-            // Evaluate
-            logger.info("Inferring rules.");
-            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
+            // Load rules
+            final var factChecker = loadFactScorer(model, trainingSet, options.rulesFile);
+
             logger.info("Evaluating system.");
             logger.info("Checking {} facts.", trainingSet.getEntries().size());
-            var averageError = 0.0;
-            for (var entry : trainingSet.getEntries()) {
-                final double truthValue = factChecker.check(entry.statement());
-                final double error = Math.abs(truthValue - entry.truthValue());
-                averageError += error;
-                logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
-                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
-                        truthValue, entry.truthValue(), error);
-            }
-            averageError /= trainingSet.getEntries().size();
+            AtomicReference<Double> averageError = new AtomicReference<>(0.0);
+            AtomicInteger count = new AtomicInteger();
+            trainingSet.getEntries().parallelStream().forEach(entry -> {
+                final double truthValue = factChecker.scoreStatement(entry.statement());
+                synchronized (factChecker) {
+                    final double error = Math.abs(truthValue - entry.truthValue());
+                    averageError.updateAndGet(v -> v + error);
+                    logger.info("Truth value for '{}' is {}, expected was {}, error is {}.",
+                            !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                            truthValue, entry.truthValue(), error);
+                    logger.info("{} facts remaining.", trainingSet.getEntries().size() - count.incrementAndGet());
+                }
+            });
+
+            averageError.updateAndGet(v -> v / trainingSet.getEntries().size());
             logger.info("Average error: {}", averageError);
         }
     }
@@ -123,35 +122,32 @@ public class App {
 
         @Override
         public void run() {
+            // Load the test set
+            TestSet testSet = loadTestSet(options.testData.test, options.testData.useDefaultData);
+
             // Load the training set
-            TestSet testSet;
-            if (options.testData.useDefaultData) {
-                testSet = Fokgsw2024.getTestSet();
-            } else {
-                try {
-                    testSet = new TestSet(Path.of(options.testData.test));
-                } catch (IOException e) {
-                    logger.error("Error reading test set file", e);
-                    throw new RuntimeException(e);
-                }
-            }
+            TrainingSet trainingSet = loadTrainingSet(options.trainingFile, options.testData.useDefaultData);
 
-            // Load database + ontology
-            logger.info("Loading database and ontology.");
+            // Load database
+            logger.info("Loading database.");
             Model model = RDFDataMgr.loadModel(options.database.dumpFile);
-            Model ontology = RDFDataMgr.loadModel(options.owlFile);
 
-            // Evaluate
-            logger.info("Inferring rules.");
-            final var factChecker = new FactChecker(model.getGraph(), ontology.getGraph());
+            // Load rules
+            final var factChecker = loadFactScorer(model, trainingSet, options.rulesFile);
+
             final var results = new ArrayList<TrainingSet.TrainingSetEntry>(testSet.getEntries().size());
-            for (var entry : testSet.getEntries()) {
-                final double truthValue = factChecker.check(entry.statement());
-                logger.info("Truth value for '{}' is {}",
-                        options.displayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
-                        truthValue);
-                results.add(entry.toTrainingSetEntry(truthValue));
-            }
+            AtomicInteger count = new AtomicInteger();
+            testSet.getEntries().parallelStream().forEach(entry -> {
+                final double truthValue = factChecker.scoreStatement(entry.statement());
+
+                synchronized (factChecker) {
+                    logger.info("Truth value for '{}' is {}",
+                            !options.dontDisplayLabels ? labeledStatement(model, entry.statement()) : entry.statement(),
+                            truthValue);
+                    logger.info("{} facts remaining.", testSet.getEntries().size() - count.incrementAndGet());
+                    results.add(entry.toTrainingSetEntry(truthValue));
+                }
+            });
             try {
                 TrainingSet.serializeToResultFile(results, Path.of(options.outputFile));
             } catch (IOException e) {
@@ -162,8 +158,6 @@ public class App {
     }
 
     public static void main(String[] args) {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-        root.setLevel(Level.INFO);
         new CommandLine(new App()).execute(args);
     }
 
@@ -177,6 +171,57 @@ public class App {
         m.listObjectsOfProperty(statement.getObject().isResource() ? statement.getObject().asResource() : statement.getPredicate(), RDFS.label).forEachRemaining(o -> objectLabel.set(o.asLiteral().getString()));
 
         return String.format("%s %s %s", subjectLabel, predicateLabel, objectLabel);
+    }
+
+    public static TrainingSet loadTrainingSet(String path, boolean useDefaultData) {
+        logger.info("Loading training set.");
+        TrainingSet trainingSet;
+        if (useDefaultData) {
+            trainingSet = Fokgsw2024.getTrainingSet();
+        } else {
+            try {
+                trainingSet = new TrainingSet(Path.of(path));
+            } catch (IOException e) {
+                logger.error("Error reading training set file", e);
+                throw new RuntimeException(e);
+            }
+        }
+        return trainingSet;
+    }
+
+    public static TestSet loadTestSet(String path, boolean useDefaultData) {
+        logger.info("Loading test set.");
+        TestSet testSet;
+        if (useDefaultData) {
+            testSet = Fokgsw2024.getTestSet();
+        } else {
+            try {
+                testSet = new TestSet(Path.of(path));
+            } catch (IOException e) {
+                logger.error("Error reading test set file", e);
+                throw new RuntimeException(e);
+            }
+        }
+        return testSet;
+    }
+
+    public static FactScorer loadFactScorer(Model model, TrainingSet trainingSet, String rulesFile) {
+        final var factChecker = new FactScorer(model);
+        if (factChecker.loadRulesFromFile(Path.of(rulesFile))) {
+            logger.info("Loaded existing rules from file.");
+        } else {
+            logger.info("Inferring rules.");
+            factChecker.generateAndWeightRules(trainingSet, SystemParameters.ALPHA, SystemParameters.BETA, SystemParameters.GAMMA);
+
+            // Save rules
+            try {
+                factChecker.saveRulesToFile(Path.of(rulesFile));
+            } catch (IOException e) {
+                logger.error("Error writing rules file", e);
+                throw new RuntimeException(e);
+            }
+        }
+        return factChecker;
     }
 
 }
