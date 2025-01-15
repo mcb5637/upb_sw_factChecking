@@ -17,6 +17,10 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+
+/**
+ * This class scores facts based on the rules generated from the training set.
+ */
 public class FactScorer {
 
     private final Model knownFacts;
@@ -31,51 +35,66 @@ public class FactScorer {
         this.knownFacts = knownFacts;
     }
 
+    /**
+     * Generates and weights rules based on the training set.
+     *
+     * @param trainingSet the training set to generate rules from
+     * @param alpha       the alpha parameter for the rule weight calculation
+     * @param beta        the beta parameter for the rule weight calculation
+     * @param gamma       the gamma parameter for the rule weight calculation
+     */
     public void generateAndWeightRules(TrainingSet trainingSet, double alpha, double beta, double gamma) {
-        Map<Rule, Set<TrainingSet.TrainingSetEntry>> coverage = Collections.synchronizedMap(new HashMap<>());
-        Map<String, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>());
-        Set<WeightedRule> ruleSet = Collections.synchronizedSet(new HashSet<>());
+        Map<Rule, Set<TrainingSet.TrainingSetEntry>> coverage = Collections.synchronizedMap(new HashMap<>());               // Rule -> Set of covered examples
+        Map<String, Set<TrainingSet.TrainingSetEntry>> coveragePredicates = Collections.synchronizedMap(new HashMap<>());  // Predicate -> Set of covered examples
+        Set<WeightedRule> ruleSet = Collections.synchronizedSet(new HashSet<>());                                           // Set of generated rules
 
+        // Generate rules for each example in the training set.
         AtomicInteger counter = new AtomicInteger();
         trainingSet.getEntries().parallelStream().forEach(example -> {
             final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, INITIAL_MAX_PATH_LENGTH);
             logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
+
+            // For each generated rule, add it to the rule set and update the coverage maps.
             for (var rule : ruleArray) {
-                final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
-                final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.rule.getHead()[0].toString().split(" ")[1], r -> Collections.synchronizedSet(new HashSet<>()));
-                exampleList.add(example);
-                exampleListUnbound.add(example);
+                final var coveredExampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
+                final var predicateCoveredExamplesPredicateList = coveragePredicates.computeIfAbsent(getPredicate(rule.rule), r -> Collections.synchronizedSet(new HashSet<>()));
+                coveredExampleList.add(example);
+                predicateCoveredExamplesPredicateList.add(example);
                 ruleSet.add(rule);
             }
         });
 
         // Counter covered examples for each rule.
         for (WeightedRule rule : ruleSet) {
+            // Count covered examples by rule.
             final var examples = coverage.get(rule.rule);
-            AtomicInteger countPositive = new AtomicInteger();
+            AtomicInteger countCorrect = new AtomicInteger();
             AtomicInteger countCounter = new AtomicInteger();
 
             examples.forEach(example -> {
+                // If rule is positive and example is true or rule is negative and example is false,
+                // increment correct counter.
                 if ((example.truthValue() == 1.0 && rule.isPositive) || (example.truthValue() == 0.0 && !rule.isPositive)) {
-                    countPositive.getAndIncrement();
+                    countCorrect.getAndIncrement();
                 } else {
                     countCounter.getAndIncrement();
                 }
             });
 
-            final var examplesUnbound = coverageUnbound.get(rule.rule.getHead()[0].toString().split(" ")[1]);
-            AtomicInteger unboundCountPositive = new AtomicInteger();
-            AtomicInteger unboundCountCounter = new AtomicInteger();
-
-            examplesUnbound.forEach(example -> {
+            // Count covered examples by predicate.
+            final var examplesPredicate = coveragePredicates.get(getPredicate(rule.rule));
+            AtomicInteger predicateCountCorrect = new AtomicInteger();
+            AtomicInteger predicateCountCounter = new AtomicInteger();
+            examplesPredicate.forEach(example -> {
                 if ((example.truthValue() == 1.0 && rule.isPositive) || (example.truthValue() == 0.0 && !rule.isPositive)) {
-                    unboundCountPositive.getAndIncrement();
+                    predicateCountCorrect.getAndIncrement();
                 } else {
-                    unboundCountCounter.getAndIncrement();
+                    predicateCountCounter.getAndIncrement();
                 }
             });
 
-            rule.setCounters(countPositive.get(), countCounter.get(), unboundCountPositive.get(), unboundCountCounter.get());
+            // Assign counters to rule for later weight calculation.
+            rule.setCounters(countCorrect.get(), countCounter.get(), predicateCountCorrect.get(), predicateCountCounter.get());
         }
 
         // Calculate and assign weights.
@@ -96,47 +115,53 @@ public class FactScorer {
     }
 
     public double scoreStatement(Statement fact) {
-        AtomicReference<Double> minPositiveW  = new AtomicReference<>(1.0);
+        AtomicReference<Double> minPositiveWeight  = new AtomicReference<>(1.0); // initialize with 1.0
         AtomicReference<Rule> positiveRule = new AtomicReference<>();
-        Arrays.stream(positiveRules).forEachOrdered(rule -> {
-            if (minPositiveW.get() == 1.0) {
-                if (rule.doesRuleApply(knownFacts, fact)) {
-                    if (minPositiveW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
-                        positiveRule.set(rule.rule);
-                    }
-                }
+        for (WeightedRule rule : positiveRules) {
+            if (rule.doesRuleApply(knownFacts, fact)) {
+                minPositiveWeight.getAndSet(rule.weight);
+                positiveRule.set(rule.rule);
+                break;
             }
-        });
-
-        AtomicReference<Double> minNegativeW = new AtomicReference<>(1.0); // TODO: idk, seems to make more sense tbh
-        AtomicReference<Rule> negativeRule = new AtomicReference<>();
-        if (minPositiveW.get() == 1.0) {
-            Arrays.stream(negativeRules).forEachOrdered(rule -> {
-                if (minNegativeW.get() == 1.0) {
-                    if (rule.doesRuleApply(knownFacts, fact)) {
-                        if (minNegativeW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
-                            negativeRule.set(rule.rule);
-                        }
-                    }
-                }
-            });
         }
 
+        AtomicReference<Double> minNegativeWeight = new AtomicReference<>(1.0); // initialize with 1.0
+        AtomicReference<Rule> negativeRule = new AtomicReference<>();
+        // if we already found a positive rule that applies, we don't need to check the negative rules
+        if (minPositiveWeight.get() == 1.0) {
+            for (WeightedRule rule : negativeRules) {
+                if (rule.doesRuleApply(knownFacts, fact)) {
+                    minNegativeWeight.getAndSet(rule.weight);
+                    negativeRule.set(rule.rule);
+                    break;
+                }
+            }
+        }
+
+        // Synchronization just to prevent interleaving of the log messages.
         synchronized(this) {
             if (positiveRule.get() != null) {
-                logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact, true));
-                logger.info("Positive evidence path: {}", instantiateRule(positiveRule.get(), fact, false));
+                logger.info("Positive evidence path: {}", instantiateRule(knownFacts, positiveRule.get(), fact, true));
+                logger.info("Positive evidence path: {}", instantiateRule(knownFacts, positiveRule.get(), fact, false));
             } else if (negativeRule.get() != null) {
-                logger.info("Negative evidence path: {}", instantiateRule(negativeRule.get(), fact, true));
-                logger.info("Negative evidence path: {}", instantiateRule(negativeRule.get(), fact, false));
+                logger.info("Negative evidence path: {}", instantiateRule(knownFacts, negativeRule.get(), fact, true));
+                logger.info("Negative evidence path: {}", instantiateRule(knownFacts, negativeRule.get(), fact, false));
             } else {
                 logger.warn("No evidence path found for {}", fact);
             }
-            return (((1 - minPositiveW.get()) - (1 - minNegativeW.get())) + 1) / 2;
+
+            // Score the fact based on the weights of the rules.
+            return (((1 - minPositiveWeight.get()) - (1 - minNegativeWeight.get())) + 1) / 2;
         }
 
     }
 
+    /**
+     * Saves the rules to a file.
+     *
+     * @param file         the file to save the rules to
+     * @throws IOException if an error occurs while writing the file
+     */
     public void saveRulesToFile(Path file) throws IOException {
         final var combinedArray = new WeightedRule[positiveRules.length + negativeRules.length];
         System.arraycopy(positiveRules, 0, combinedArray, 0, positiveRules.length);
@@ -144,6 +169,12 @@ public class FactScorer {
         WeightedRule.serializeRules(combinedArray, file);
     }
 
+    /**
+     * Loads the rules from a file.
+     *
+     * @param file the file to load the rules from
+     * @return     true if the rules were loaded successfully, false otherwise
+     */
     public boolean loadRulesFromFile(Path file) {
         if (!file.toFile().exists()) {
             return false;
@@ -167,7 +198,19 @@ public class FactScorer {
         return true;
     }
 
-    private String instantiateRule(Rule rule, Statement fact, boolean labeled) {
+
+    /**
+     * Creates a string representation of the evidence path for a fact.
+     * The evidence path is instantiated with the labels of the resources if labeled is true.
+     * Does this by executing a SPARQL query on the known facts.
+     *
+     * @param knownFacts base knowledge graph
+     * @param rule       the rule to instantiate
+     * @param fact       the fact to instantiate the rule with
+     * @param labeled    whether to use labels for the resources
+     * @return           the string representation of the evidence path
+     */
+    private static String instantiateRule(Model knownFacts, Rule rule, Statement fact, boolean labeled) {
         SelectBuilder builder = new SelectBuilder();
         builder.addVar("*");
         if (rule.bodyLength() < 2) {
@@ -208,5 +251,15 @@ public class FactScorer {
             ruleString = ruleString.replaceAll("\\?e0", subjectString).replaceAll("\\?e" + rule.bodyLength(), objectString);
         }
         return ruleString;
+    }
+
+    /**
+     * Returns the predicate of the head from a rule.
+     *
+     * @param rule the rule to get the predicate from
+     * @return     the predicate of the head
+     */
+    private static String getPredicate(Rule rule) {
+        return rule.getHead()[0].toString().split(" ")[1];
     }
 }
