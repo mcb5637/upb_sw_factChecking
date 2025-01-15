@@ -14,9 +14,6 @@ import org.upb_sw_factChecking.dataset.TrainingSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,8 +24,6 @@ public class FactScorer {
     private WeightedRule[] negativeRules;
 
     private final static int INITIAL_MAX_PATH_LENGTH = SystemParameters.INITIAL_MAX_PATH_LENGTH;
-
-    private final static int THREAD_COUNT = SystemParameters.RULE_GEN_THREAD_COUNT;
 
     private final static Logger logger = org.slf4j.LoggerFactory.getLogger(FactScorer.class);
 
@@ -41,27 +36,18 @@ public class FactScorer {
         Map<String, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>());
         Set<WeightedRule> ruleSet = Collections.synchronizedSet(new HashSet<>());
 
-        try (ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT)) {
-            List<CompletableFuture<Void>> futures = new ArrayList<>();
-            AtomicInteger counter = new AtomicInteger();
-            // Collect all rules and assign the covered examples to them.
-            for (var example : trainingSet.getEntries()) {
-                final var future = CompletableFuture.runAsync(() -> {
-                    final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, INITIAL_MAX_PATH_LENGTH);
-                    logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
-                    for (var rule : ruleArray) {
-                        final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
-                        final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.rule.getHead()[0].toString().split(" ")[1], r -> Collections.synchronizedSet(new HashSet<>()));
-                        exampleList.add(example);
-                        exampleListUnbound.add(example);
-                        ruleSet.add(rule);
-                    }
-                }, executorService);
-                futures.add(future);
+        AtomicInteger counter = new AtomicInteger();
+        trainingSet.getEntries().parallelStream().forEach(example -> {
+            final var ruleArray = WeightedRule.generateRules(knownFacts, example.statement(), example.truthValue() == 1.0, INITIAL_MAX_PATH_LENGTH);
+            logger.info("Example Number {} of {}: Generated {} rules for example {}.", counter.incrementAndGet(), trainingSet.getEntries().size(), ruleArray.length, example.statement());
+            for (var rule : ruleArray) {
+                final var exampleList = coverage.computeIfAbsent(rule.rule, r -> Collections.synchronizedSet(new HashSet<>()));
+                final var exampleListUnbound = coverageUnbound.computeIfAbsent(rule.rule.getHead()[0].toString().split(" ")[1], r -> Collections.synchronizedSet(new HashSet<>()));
+                exampleList.add(example);
+                exampleListUnbound.add(example);
+                ruleSet.add(rule);
             }
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-            executorService.shutdown();
-        }
+        });
 
         // Counter covered examples for each rule.
         for (WeightedRule rule : ruleSet) {
