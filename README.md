@@ -36,7 +36,7 @@ The application generates rules that are used for fact checking.
 The rules are generated from the training set and are stored in the provided rule file.
 If the rule file already exists, the application will use the existing rules.
 
-The repository also provides a pre-generated rule file that can be used for evaluation.
+The repository also provides a pre-generated rule file called `rules-p6.txt` that can be used for evaluation.
 
 ```shell
 java -jar upb_sw_factChecking.jar check    --test-file FILE --dump-file FILE [ --training-file FILE ] [ --rules-file FILE ]
