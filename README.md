@@ -31,12 +31,22 @@ java -jar upb_sw_factChecking.jar
 The application has two commands `check` and `evaluate`.
 The `check` command checks the correctness of rdf statements in the given test file.
 The `evaluate` command evaluates the systems performance against a training set.
-Rules are generated automatically when started the first time and then saved to a file.
-Later executions will load and use these previously stored rules.
+
+The application generates rules that are used for fact checking.
+The rules are generated from the training set and are stored in the provided rule file.
+If the rule file already exists, the application will use the existing rules.
+
+The repository also provides a pre-generated rule file that can be used for evaluation.
 
 ```shell
-java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
-java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
+java -jar upb_sw_factChecking.jar check    --test-file FILE --dump-file FILE [ --training-file FILE ] [ --rules-file FILE ]
+java -jar upb_sw_factChecking.jar evaluate --test-file FILE --dump-file FILE [ --training-file FILE ] [ --rules-file FILE ] [ --output-file FILE ]
+```
+
+The application implements a help command that provides information about the available commands and options.
+
+```shell
+java -jar upb_sw_factChecking.jar -h
 ```
 
 ## Implementation Approach
