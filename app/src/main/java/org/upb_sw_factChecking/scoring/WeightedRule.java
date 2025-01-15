@@ -27,11 +27,15 @@ import java.util.Locale;
  */
 public class WeightedRule {
 
-    // Class to store result of local graph generation.
+    /**
+     * Class to store result of local graph generation.
+     *
+     * @param graph the local graph
+     * @param maxPathLength the maximum path length used to generate the local graph
+     */
     public record LocalGraph(Model graph, int maxPathLength) {}
 
     public Rule rule;
-    public Rule unboundRule;
     public boolean isPositive;
     public double weight;
 
@@ -44,9 +48,8 @@ public class WeightedRule {
 
     private static final Logger logger = LoggerFactory.getLogger(WeightedRule.class);
 
-    public WeightedRule(Rule rule, Rule unboundRule, boolean isPositive) {
+    public WeightedRule(Rule rule, boolean isPositive) {
         this.rule = rule;
-        this.unboundRule = unboundRule;
         this.isPositive = isPositive;
         this.weight = 0.0;
     }
@@ -55,11 +58,10 @@ public class WeightedRule {
         LocalGraph localGraph = createLocalGraph(baseModel, example.getSubject(), example.getObject(), maxPathLength, ABSOLUTE_MAX_PATH_LENGTH);
         Statement[][] paths = createPaths(localGraph.graph, example.getSubject(), example.getObject(), localGraph.maxPathLength);
         Rule[] rules = createRules(paths, example);
-        Rule[] unboundRules = createUnboundRules(paths, example);
 
         WeightedRule[] result = new WeightedRule[rules.length];
         for (int i = 0; i < rules.length; i++) {
-            result[i] = new WeightedRule(rules[i], unboundRules[i], isPositive);
+            result[i] = new WeightedRule(rules[i], isPositive);
         }
 
         if (rules.length == 0) {
@@ -191,22 +193,6 @@ public class WeightedRule {
         return rules.toArray(new Rule[0]);
     }
 
-    public static Rule[] createUnboundRules(Statement[][] paths, Statement head) {
-        List<Rule> rules = new ArrayList<>(paths.length);
-        for (final Statement[] path : paths) {
-            // If a path has the length of one and is the same as the head, skip it.
-            if (path.length == 1 && path[0].equals(head)) continue;
-
-            String headString = String.format("(?e0, %s, ?e%d)", head.getPredicate().getURI(), path.length * 2 - 1);
-            String[] bodyStrings = new String[path.length];
-            for (int i = 0; i < path.length; i++) {
-                bodyStrings[i] = String.format("(?e%d, %s, ?e%d)", i * 2, path[i].getPredicate().getURI(), (i * 2) + 1);
-            }
-            rules.add(Rule.parseRule(String.join(", ", bodyStrings) + " -> " + headString + " ."));
-        }
-        return rules.toArray(new Rule[0]);
-    }
-
     public boolean doesRuleApply(Model baseModel, Statement s) {
         if (!s.getPredicate().getURI().equals(this.rule.getHead()[0].toString().split(" ")[1].replace("@", "http://rdf.freebase.com/ns/"))) {
             // In this case rule doesn't apply at all.
@@ -258,8 +244,8 @@ public class WeightedRule {
             for (int i = 0; i < ruleCount; i++) {
                 final var line = reader.readLine();
                 final var split = line.split(";");
-                rules[i] = new WeightedRule(Rule.parseRule(split[1]), Rule.parseRule(split[2]), split[0].trim().equals("positive"));
-                rules[i].weight = Double.parseDouble(split[3]);
+                rules[i] = new WeightedRule(Rule.parseRule(split[1]), split[0].trim().equals("positive"));
+                rules[i].weight = Double.parseDouble(split[2]);
             }
         }
         return rules;
@@ -272,10 +258,9 @@ public class WeightedRule {
             for (WeightedRule rule : rules) {
                 DecimalFormat df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
                 df.setMaximumFractionDigits(20);
-                writer.write(String.format("%s; %s; %s; %s",
+                writer.write(String.format("%s; %s; %s",
                         rule.isPositive ? "positive" : "negative",
                         rule.rule.toShortString(),
-                        rule.unboundRule.toShortString(),
                         df.format(rule.weight)));
                 writer.newLine();
             }
