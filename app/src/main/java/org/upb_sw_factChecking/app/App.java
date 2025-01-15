@@ -48,7 +48,7 @@ public class App {
 
         static class TestDataOption {
             @Option(names = {"fokgsw"}, description = "Use default data from FoKG SW 2024")
-            Boolean useDefaultData;
+            Boolean useDefaultData = false;
             @Option(names = {"-t", "--test-file"}, description = "Path to test data", paramLabel = "<FILE>")
             String test;
         }
@@ -61,7 +61,7 @@ public class App {
         }
 
         @Option(names = {"--labels"}, description = "Display labels instead of URIs", defaultValue = "false")
-        boolean displayLabels;
+        boolean displayLabels = false;
     }
 
     @Command(
