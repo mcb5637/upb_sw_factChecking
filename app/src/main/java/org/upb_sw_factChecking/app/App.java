@@ -158,6 +158,13 @@ public class App {
         new CommandLine(new App()).execute(args);
     }
 
+    /**
+     * Returns a string representation of a statement, in which the URI's of the entities are replaced with their labels.
+     *
+     * @param m         The model containing the labels
+     * @param statement The statement to be labeled
+     * @return          A string representation of the statement
+     */
     private static String labeledStatement(Model m, Statement statement) {
         AtomicReference<String> subjectLabel = new AtomicReference<>(statement.getSubject().getURI());
         AtomicReference<String> predicateLabel = new AtomicReference<>(statement.getPredicate().getURI());
@@ -170,6 +177,13 @@ public class App {
         return String.format("%s %s %s", subjectLabel, predicateLabel, objectLabel);
     }
 
+    /**
+     * Load the training set from the given path or use the default data.
+     *
+     * @param path           The path to the training set file
+     * @param useDefaultData Whether to use the default data
+     * @return               The training set
+     */
     public static TrainingSet loadTrainingSet(String path, boolean useDefaultData) {
         logger.info("Loading training set.");
         TrainingSet trainingSet;
@@ -186,6 +200,13 @@ public class App {
         return trainingSet;
     }
 
+    /**
+     * Load the test set from the given path or use the default data.
+     *
+     * @param path           The path to the test set file
+     * @param useDefaultData Whether to use the default data
+     * @return               The test set
+     */
     public static TestSet loadTestSet(String path, boolean useDefaultData) {
         logger.info("Loading test set.");
         TestSet testSet;
@@ -202,6 +223,14 @@ public class App {
         return testSet;
     }
 
+    /**
+     * Load the fact scorer from the given rules file or generate the rules if the file does not exist.
+     *
+     * @param model       The model containing the data
+     * @param trainingSet The training set
+     * @param rulesFile   The path to the rules file
+     * @return            The fact scorer
+     */
     public static FactScorer loadFactScorer(Model model, TrainingSet trainingSet, String rulesFile) {
         final var factChecker = new FactScorer(model);
         if (factChecker.loadRulesFromFile(Path.of(rulesFile))) {
