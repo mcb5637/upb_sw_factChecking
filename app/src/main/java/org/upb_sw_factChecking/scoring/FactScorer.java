@@ -28,8 +28,6 @@ public class FactScorer {
 
     private final static int INITIAL_MAX_PATH_LENGTH = SystemParameters.INITIAL_MAX_PATH_LENGTH;
 
-    // Number of threads to use for rule generation.
-    // Something will create additional threads anyway, so shouldn't be set too high.
     private final static int THREAD_COUNT = SystemParameters.RULE_GEN_THREAD_COUNT;
 
     private final static Logger logger = org.slf4j.LoggerFactory.getLogger(FactScorer.class);
@@ -40,7 +38,7 @@ public class FactScorer {
 
     public void generateAndWeightRules(TrainingSet trainingSet, double alpha, double beta, double gamma) {
         Map<Rule, Set<TrainingSet.TrainingSetEntry>> coverage = Collections.synchronizedMap(new HashMap<>());
-        Map<String, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>()); // TODO:
+        Map<String, Set<TrainingSet.TrainingSetEntry>> coverageUnbound = Collections.synchronizedMap(new HashMap<>());
         Set<WeightedRule> ruleSet = Collections.synchronizedSet(new HashSet<>());
 
         try (ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT)) {
@@ -115,9 +113,11 @@ public class FactScorer {
         AtomicReference<Double> minPositiveW  = new AtomicReference<>(1.0);
         AtomicReference<Rule> positiveRule = new AtomicReference<>();
         Arrays.stream(positiveRules).forEachOrdered(rule -> {
-            if (rule.doesRuleApply(knownFacts, fact) && minPositiveW.get() == 1.0) {
-                if (minPositiveW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
-                    positiveRule.set(rule.rule);
+            if (minPositiveW.get() == 1.0) {
+                if (rule.doesRuleApply(knownFacts, fact)) {
+                    if (minPositiveW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
+                        positiveRule.set(rule.rule);
+                    }
                 }
             }
         });
@@ -126,16 +126,15 @@ public class FactScorer {
         AtomicReference<Rule> negativeRule = new AtomicReference<>();
         if (minPositiveW.get() == 1.0) {
             Arrays.stream(negativeRules).forEachOrdered(rule -> {
-                if (rule.doesRuleApply(knownFacts, fact) && minNegativeW.get() == 1.0) {
-                    if (minNegativeW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
-                        negativeRule.set(rule.rule);
+                if (minNegativeW.get() == 1.0) {
+                    if (rule.doesRuleApply(knownFacts, fact)) {
+                        if (minNegativeW.getAndUpdate(d -> rule.weight < d ? rule.weight : d) > rule.weight) {
+                            negativeRule.set(rule.rule);
+                        }
                     }
                 }
             });
         }
-
-        // logger.info("Positive rule: {}", positiveRule.get());
-        // logger.info("Negative rule: {}", negativeRule.get());
 
         synchronized(this) {
             if (positiveRule.get() != null) {
@@ -223,9 +222,5 @@ public class FactScorer {
             ruleString = ruleString.replaceAll("\\?e0", subjectString).replaceAll("\\?e" + rule.bodyLength(), objectString);
         }
         return ruleString;
-    }
-
-    public void reweightRules(TrainingSet trainingSet, double alpha, double beta, double gamma) {
-        // TODO:
     }
 }

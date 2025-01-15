@@ -11,7 +11,7 @@ public class SystemParameters {
     // Local graph generation will start with this path length. If no path has been found,
     // the path length will be increased by one until the absolute maximum path length is reached.
     public static final int INITIAL_MAX_PATH_LENGTH = 3;
-    public static final int ABSOLUTE_MAX_PATH_LENGTH = 8;
+    public static final int ABSOLUTE_MAX_PATH_LENGTH = 6;
 
     public static final int NEGATIVE_MAX_PATH_COUNT = 5;
 
