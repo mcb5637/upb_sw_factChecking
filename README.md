@@ -90,6 +90,7 @@ covered examples and covered examples by the unbound rule,
 but the ratio between covered examples and number of examples with the same predicate as the head of the rule.
 
 The weight $w_2(r)$ of a rule $r$ is calculated as follows:
+
 $$w_2(r) = \alpha \cdot \left(1 - \frac{\left| C_r(E_{correct}) \right|}{\left| P_r(E_{correct}) \right|} \right) + \beta \left(\frac{\left| C_r(E_{counter}) \right|}{\left| P_r(E_{counter}) \right|} \right)$$
 
 Whereas:
