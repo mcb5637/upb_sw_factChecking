@@ -25,9 +25,14 @@ import java.util.concurrent.atomic.AtomicReference;
 @Command(name = "", subcommands = {App.Check.class, App.Evaluate.class}, customSynopsis = "[evaluate | check] [OPTIONS]")
 public class App {
 
+    @Option(names = {"-h", "--help"}, usageHelp = true, description = "Display this help message.")
+    boolean helpRequested;
+
     public static final Logger logger = org.slf4j.LoggerFactory.getLogger(App.class);
 
     static class CommandLineOptions {
+        @Option(names = {"-h", "--help"}, usageHelp = true, description = "Display this help message.")
+        boolean helpRequested;
 
         @ArgGroup(exclusive = true, multiplicity = "1", heading = "Test data options%n")
         public TestDataOption testData;
