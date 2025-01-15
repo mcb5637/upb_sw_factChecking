@@ -1,6 +1,45 @@
 # Fact Checker
 
-## Approach
+## Execution
+
+### Requirements
+
+The system requires to have `java 21` installed.
+
+### Build Instructions
+
+To build a single jar file with all dependencies, run the following command:
+
+```shell
+$ ./gradlew shadowJar
+```
+
+It may be required to make the `gradlew` file executable by running `chmod +x gradlew` before executing the command.
+
+The jar file will be located at `app/build/libs/upb_sw_factChecking.jar`.
+
+### Run Instructions
+
+To run the compiled jar file, execute the following command:
+
+```shell
+java -jar upb_sw_factChecking.jar
+```
+
+### Usage
+
+The application has two commands `check` and `evaluate`.
+The `check` command checks the correctness of rdf statements in the given test file.
+The `evaluate` command evaluates the systems performance against a training set.
+Rules are generated automatically when started the first time and then saved to a file.
+Later executions will load and use these previously stored rules.
+
+```shell
+java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
+java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
+```
+
+## Implementation Approach
 
 Our approach is based on [this paper](https://aclanthology.org/2020.coling-main.147.pdf).
 The paper does not provide any code that implements the proposed algorithm.
@@ -69,40 +108,3 @@ If no positive rule infers the triple, we search for the lowest weighted negativ
 In difference to the paper, we initialize both weights with $1.0$.
 If a positive rule covering the triple is found, and the negative weight is set to $0.0$,
 as stated in the paper, the veracity of a triple will never be greater than $0.5$.
-
-## Build requirements
-
-The system requires to have `java 21` installed. Other requirements are managed by Gradle.
-
-## Build Instructions
-
-To build a single jar file with all dependencies, run the following command:
-
-```shell
-$ ./gradlew shadowJar
-```
-
-It may be required to make the `gradlew` file executable by running `chmod +x gradlew` before executing the command.
-
-The jar file will be located at `app/build/libs/upb_sw_factChecking.jar`.
-
-## Run Instructions
-
-To run the compiled jar file, execute the following command:
-
-```shell
-java -jar upb_sw_factChecking.jar
-```
-
-## Usage
-
-The application has two commands `check` and `evaluate`.
-The `check` command checks the correctness of rdf statements in the given test file.
-The `evaluate` command evaluates the systems performance against a training set.
-Rules are generated automatically when started the first time and then saved to a file.
-Subsequent executions will load and use these previously stored rules.
-
-```shell
-java -jar upb_sw_factChecking.jar check    ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
-java -jar upb_sw_factChecking.jar evaluate ( fokgsw | --test-file FILE ) --dump-file FILE [ --output-file FILE ]
-```
